@@ -114,7 +114,7 @@ export function normalize(body: any): NormalizedResult {
       inline_csv: fp.inline_csv ?? null,
       csv_url: fp.fp_json_csv_url ?? null,
       total_area_csv_url: fp.total_area_csv_url ?? null,
-      json_url: fp.json_file_url ?? null,
+      json_url: fp.fp_json_file_url ?? null,
       labelme_side_by_side_url: fp.image_labelme_side_by_side_url ?? null
     },
     image_condition: ica,
