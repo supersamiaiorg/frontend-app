@@ -4,6 +4,8 @@ import { storage, addSSEClient, removeSSEClient, notifySSEClients, sseClients } 
 import { normalize } from "./normalize";
 import { triggerRequestSchema } from "@shared/schema";
 import { z } from "zod";
+import * as fs from "fs";
+import * as path from "path";
 
 const N8N_WEBHOOK_URL = "https://supersami.app.n8n.cloud/webhook/d36312c5-f379-4b22-9f6c-e4d44f50af4c";
 const TEST_MODE = process.env.TEST_MODE === "true";
@@ -157,8 +159,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log("[/api/test/simulate-callback] Simulating callback with fixture data");
         
-        const fs = await import("fs");
-        const path = await import("path");
         const fixturePath = path.join(process.cwd(), "server/fixtures/sample_callback.json");
         
         if (!fs.existsSync(fixturePath)) {
