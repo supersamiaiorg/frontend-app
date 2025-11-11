@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import PropertyInput from "@/components/PropertyInput";
 import StatusBadge from "@/components/StatusBadge";
 import PropertyGallery from "@/components/PropertyGallery";
@@ -9,125 +12,119 @@ import DetailsTab from "@/components/DetailsTab";
 import LocationTab from "@/components/LocationTab";
 import AnalyticsTab from "@/components/AnalyticsTab";
 import PhotosTab from "@/components/PhotosTab";
+import type { NormalizedResult } from "@shared/schema";
+
+type AnalysisStatus = "waiting" | "analyzing" | "complete" | "error" | "timeout";
 
 export default function Home() {
-  const [status, setStatus] = useState<"analyzing" | "complete" | "error" | "waiting" | null>(null);
-  const [hasResults, setHasResults] = useState(false);
+  const [, navigate] = useLocation();
+  const [status, setStatus] = useState<AnalysisStatus | null>(null);
+  const [propertyUrl, setPropertyUrl] = useState<string>("");
+  const [superId, setSuperId] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  const triggerMutation = useMutation({
+    mutationFn: async (url: string) => {
+      return apiRequest("POST", "/api/trigger", { property_url: url });
+    },
+    onSuccess: () => {
+      setStatus("analyzing");
+      connectToSSE();
+    },
+    onError: (error) => {
+      console.error("Trigger error:", error);
+      setStatus("error");
+    }
+  });
+
+  const { data: result } = useQuery<NormalizedResult>({
+    queryKey: ["/api/results", superId, propertyUrl],
+    enabled: !!superId || (!!propertyUrl && status === "complete"),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (superId) params.set("super_id", superId);
+      else if (propertyUrl) params.set("property_url", propertyUrl);
+      
+      const response = await fetch(`/api/results?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch results");
+      return response.json();
+    }
+  });
+
+  const connectToSSE = () => {
+    if (!propertyUrl) return;
+
+    const params = new URLSearchParams({ property_url: propertyUrl });
+    const eventSource = new EventSource(`/api/stream?${params}`);
+    eventSourceRef.current = eventSource;
+
+    const timeoutId = setTimeout(() => {
+      setStatus("timeout");
+      eventSource.close();
+    }, 12 * 60 * 1000);
+
+    eventSource.onmessage = (event) => {
+      if (event.data.startsWith(":")) return;
+      
+      try {
+        const data = JSON.parse(event.data);
+        if (data.ready && data.super_id) {
+          setSuperId(data.super_id);
+          setStatus("complete");
+          clearTimeout(timeoutId);
+          eventSource.close();
+        } else if (data.timeout) {
+          setStatus("timeout");
+          clearTimeout(timeoutId);
+        }
+      } catch (error) {
+        console.error("SSE parse error:", error);
+      }
+    };
+
+    eventSource.onerror = () => {
+      console.error("SSE connection error");
+      clearTimeout(timeoutId);
+      eventSource.close();
+    };
+  };
+
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
 
   const handleAnalyze = (url: string) => {
-    console.log("Analyzing property:", url);
-    setStatus("analyzing");
-    setHasResults(false);
-    
-    setTimeout(() => {
-      setStatus("complete");
-      setHasResults(true);
-    }, 2000);
+    setPropertyUrl(url);
+    setSuperId(null);
+    setStatus("waiting");
+    triggerMutation.mutate(url);
   };
 
-  const mockPropertyData = {
-    photos: [
-      {
-        url: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=450",
-        thumbnailUrl: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=135&h=100",
-        maxSizeUrl: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200",
-      },
-      {
-        url: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=450",
-        thumbnailUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=135&h=100",
-        maxSizeUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200",
-      },
-      {
-        url: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&h=450",
-        thumbnailUrl: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=135&h=100",
-        maxSizeUrl: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1200",
-      },
-      {
-        url: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&h=450",
-        thumbnailUrl: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=135&h=100",
-        maxSizeUrl: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200",
-      },
-    ],
-    header: {
-      address: "Isledon Road, N7 7LP",
-      price: { primary: "£1,600 pcm", secondary: "£369 pw" },
-      bedrooms: 1,
-      bathrooms: 1,
-      size: { primary: "370 sq ft", secondary: "34 sq m" },
-      propertyType: "Flat",
-      status: { available: false, label: "OFF THE MARKET" },
-    },
-    overview: {
-      description: "A charming one-bedroom property set on the first floor of this period conversion, located moments from Finsbury Park station for easy access to and from central London.\n\nThis property features a spacious open plan living/kitchen area, modern kitchen, a modern three-piece bathroom, wooden floor throughout, ample storage, high ceilings and gas central heating. With large windows facing both west and east for plenty of natural light throughout the day.",
-      keyFeatures: [
-        "One Bedroom",
-        "Open Plan",
-        "Period Conversion",
-        "Good Transport Links",
-        "Comprising 370sqft/34.4sqm",
-        "EPC Rating: C",
-        "Offered Part Furnished",
-        "Available Now",
-      ],
-      updateReason: "Reduced on 07/12/2024",
-    },
-    details: {
-      property: [
-        { label: "Property Type", value: "Flat" },
-        { label: "Furnishing", value: "Part furnished" },
-        { label: "Council Tax Band", value: "C" },
-        { label: "Deposit", value: "£1,847" },
-        { label: "Min Tenancy Length", value: "Ask agent" },
-        { label: "Let Type", value: "Long term" },
-      ],
-      utilities: [
-        { label: "Heating", value: "Gas central heating" },
-        { label: "Parking", value: "On street" },
-        { label: "Broadband", value: "Ask agent" },
-        { label: "Water", value: "Ask agent" },
-        { label: "Electricity", value: "Ask agent" },
-      ],
-    },
-    location: {
-      location: {
-        latitude: 51.56123,
-        longitude: -0.10855,
-        mapPreviewUrl: "https://media.rightmove.co.uk/map/_generate?width=768&height=347&zoomLevel=15&latitude=51.56123&longitude=-0.10855&signature=Bxs02lWptIN4FyKprocO8l4WIBA=",
-      },
-      stations: [
-        { station: "Arsenal Station", distance: 0.2, type: "2" },
-        { station: "Finsbury Park Station", distance: 0.3, type: "1,2" },
-        { station: "Drayton Park Station", distance: 0.6, type: "1" },
-      ],
-      postcode: "N7 7JP",
-    },
-    analytics: {
-      bedrooms: 1,
-      bathrooms: 1,
-      price: 1600,
-      size: 370,
-    },
-  };
+  const mockPropertyData = result ? transformResultToMockData(result) : null;
 
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center px-4">
-          <h1 className="text-xl font-bold">Property Analysis</h1>
+          <h1 className="text-xl font-bold" data-testid="text-app-title">Property Analysis</h1>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="text-center space-y-4">
-            <h2 className="text-4xl font-bold">Analyze UK Properties</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            <h2 className="text-4xl font-bold" data-testid="text-hero-title">Analyze UK Properties</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto" data-testid="text-hero-description">
               Enter a Rightmove property URL to get comprehensive analysis including pricing, features, location data, and market insights.
             </p>
           </div>
 
           <div className="space-y-4">
-            <PropertyInput onSubmit={handleAnalyze} isLoading={status === "analyzing"} />
+            <PropertyInput onSubmit={handleAnalyze} isLoading={status === "waiting" || status === "analyzing"} />
             {status && (
               <div className="flex justify-center">
                 <StatusBadge status={status} />
@@ -135,7 +132,7 @@ export default function Home() {
             )}
           </div>
 
-          {hasResults && (
+          {status === "complete" && mockPropertyData && (
             <div className="space-y-8 animate-in fade-in duration-500">
               <PropertyGallery photos={mockPropertyData.photos} />
               
@@ -165,9 +162,79 @@ export default function Home() {
 
       <footer className="border-t border-border py-8 mt-16">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>Property Analysis Tool - Powered by n8n webhooks</p>
+          <p data-testid="text-footer">Property Analysis Tool - Powered by n8n webhooks</p>
         </div>
       </footer>
     </div>
   );
+}
+
+function transformResultToMockData(result: NormalizedResult) {
+  const snapshot = result.data_captured?.snapshot;
+  
+  if (!snapshot) {
+    return null;
+  }
+
+  return {
+    photos: snapshot.media?.photos?.map(p => ({
+      url: p.url,
+      thumbnailUrl: p.thumb ?? p.url,
+      maxSizeUrl: p.url,
+    })) ?? [],
+    header: {
+      address: snapshot.address ?? "Unknown Address",
+      price: { 
+        primary: snapshot.price?.primary ?? "N/A", 
+        secondary: snapshot.price?.secondary ?? ""
+      },
+      bedrooms: snapshot.bedrooms ?? 0,
+      bathrooms: snapshot.bathrooms ?? 0,
+      size: { 
+        primary: snapshot.size?.primary ?? "N/A", 
+        secondary: snapshot.size?.secondary ?? ""
+      },
+      propertyType: snapshot.transactionType ?? "Property",
+      status: { 
+        available: !snapshot.statusLabel, 
+        label: snapshot.statusLabel ?? "AVAILABLE" 
+      },
+    },
+    overview: {
+      description: snapshot.html?.fullDescription ?? "No description available",
+      keyFeatures: snapshot.keyFeatures ?? [],
+      updateReason: undefined,
+    },
+    details: {
+      property: [
+        { label: "Property Type", value: snapshot.transactionType ?? "N/A" },
+        { label: "Channel", value: snapshot.channel ?? "N/A" },
+        { label: "Bedrooms", value: String(snapshot.bedrooms ?? "N/A") },
+        { label: "Bathrooms", value: String(snapshot.bathrooms ?? "N/A") },
+      ],
+      utilities: snapshot.agent ? [
+        { label: "Agent", value: snapshot.agent.displayName ?? "N/A" },
+        { label: "Phone", value: snapshot.agent.telephone ?? "N/A" },
+      ] : [],
+    },
+    location: {
+      location: {
+        latitude: snapshot.location?.latitude ?? 0,
+        longitude: snapshot.location?.longitude ?? 0,
+        mapPreviewUrl: snapshot.media?.mapPreviewUrl ?? undefined,
+      },
+      stations: snapshot.stations?.map(s => ({
+        station: s.name,
+        distance: s.distance,
+        type: "1",
+      })) ?? [],
+      postcode: snapshot.postcode ?? "N/A",
+    },
+    analytics: {
+      bedrooms: snapshot.bedrooms ?? 0,
+      bathrooms: snapshot.bathrooms ?? 0,
+      price: snapshot.price?.primary ? parseFloat(snapshot.price.primary.replace(/[^0-9.]/g, '')) : 0,
+      size: snapshot.size?.primary ? parseFloat(snapshot.size.primary.replace(/[^0-9.]/g, '')) : 0,
+    },
+  };
 }

@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 
 interface StatusBadgeProps {
-  status: "analyzing" | "complete" | "error" | "waiting";
+  status: "analyzing" | "complete" | "error" | "waiting" | "timeout";
   message?: string;
 }
 
@@ -32,6 +32,12 @@ export default function StatusBadge({ status, message }: StatusBadgeProps) {
           icon: <Clock className="h-3 w-3" />,
           label: message || "Waiting for analysis...",
           variant: "secondary" as const,
+        };
+      case "timeout":
+        return {
+          icon: <AlertCircle className="h-3 w-3" />,
+          label: message || "Analysis timed out - try again",
+          variant: "destructive" as const,
         };
     }
   };

@@ -53,8 +53,8 @@ export function normalize(body: any): NormalizedResult {
       snap = {
         transactionType: pref.transactionType ?? null,
         channel: pref.channel ?? null,
-        bedrooms: pref.bedrooms ?? parseInt(pref.infoReelItems?.find((x: any) => x.type === "BEDROOMS")?.primaryText || "") || null,
-        bathrooms: pref.bathrooms ?? parseInt(pref.infoReelItems?.find((x: any) => x.type === "BATHROOMS")?.primaryText || "") || null,
+        bedrooms: pref.bedrooms ?? (parseInt(pref.infoReelItems?.find((x: any) => x.type === "BEDROOMS")?.primaryText ?? "") ?? null),
+        bathrooms: pref.bathrooms ?? (parseInt(pref.infoReelItems?.find((x: any) => x.type === "BATHROOMS")?.primaryText ?? "") ?? null),
         size: {
           primary: pref.size?.primary ?? (pref.sizings?.find((z: any) => z.unit === "sqft")?.minimumSize ? `${pref.sizings.find((z: any) => z.unit === "sqft").minimumSize} sq ft` : (pref.infoReelItems?.find((x: any) => x.type === "SIZE")?.primaryText ?? null)),
           secondary: pref.size?.secondary ?? (pref.infoReelItems?.find((x: any) => x.type === "SIZE")?.secondaryText ?? null)
