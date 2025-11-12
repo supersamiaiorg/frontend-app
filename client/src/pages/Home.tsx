@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import PropertyInput from "@/components/PropertyInput";
 import StatusBadge from "@/components/StatusBadge";
 import PropertyGallery from "@/components/PropertyGallery";
@@ -19,7 +19,7 @@ import type { NormalizedResult } from "@shared/schema";
 type AnalysisStatus = "waiting" | "analyzing" | "complete" | "error" | "timeout";
 
 export default function Home() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [status, setStatus] = useState<AnalysisStatus | null>(null);
   const [propertyUrl, setPropertyUrl] = useState<string>("");
   const [superId, setSuperId] = useState<string | null>(null);
@@ -73,6 +73,7 @@ export default function Home() {
         if (data.ready && data.super_id) {
           setSuperId(data.super_id);
           setStatus("complete");
+          queryClient.invalidateQueries({ queryKey: ['/api/history'] });
           clearTimeout(timeoutId);
           eventSource.close();
         } else if (data.timeout) {
@@ -92,6 +93,25 @@ export default function Home() {
   };
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.split('?')[1]);
+    const urlSuperId = searchParams.get('id');
+    
+    if (urlSuperId && urlSuperId !== superId) {
+      setSuperId(urlSuperId);
+      setPropertyUrl("");
+      setStatus("complete");
+      
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    } else if (!urlSuperId && superId && status === "complete" && !propertyUrl) {
+      setSuperId(null);
+      setStatus(null);
+    }
+  }, [location]);
+
+  useEffect(() => {
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -100,6 +120,7 @@ export default function Home() {
   }, []);
 
   const handleAnalyze = (url: string) => {
+    navigate('/');
     setPropertyUrl(url);
     setSuperId(null);
     setStatus("waiting");
@@ -107,15 +128,10 @@ export default function Home() {
   };
 
   const mockPropertyData = result ? transformResultToMockData(result) : null;
+  const isActiveAnalysis = status === "waiting" || status === "analyzing";
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 items-center px-4">
-          <h1 className="text-xl font-bold" data-testid="text-app-title">Property Analysis</h1>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="text-center space-y-4">
@@ -126,15 +142,15 @@ export default function Home() {
           </div>
 
           <div className="space-y-4">
-            <PropertyInput onSubmit={handleAnalyze} isLoading={status === "waiting" || status === "analyzing"} />
-            {status && (
+            <PropertyInput onSubmit={handleAnalyze} isLoading={isActiveAnalysis} />
+            {isActiveAnalysis && (
               <div className="flex justify-center">
-                <StatusBadge status={status} />
+                <StatusBadge status={status!} />
               </div>
             )}
           </div>
 
-          {status === "complete" && mockPropertyData && (
+          {mockPropertyData && (
             <div className="space-y-8 animate-in fade-in duration-500">
               <PropertyGallery photos={mockPropertyData.photos} />
               
