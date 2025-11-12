@@ -93,7 +93,7 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.split('?')[1]);
+    const searchParams = new URLSearchParams(window.location.search);
     const urlSuperId = searchParams.get('id');
     
     if (urlSuperId && urlSuperId !== superId) {
@@ -109,7 +109,7 @@ export default function Home() {
       setSuperId(null);
       setStatus(null);
     }
-  }, [location]);
+  }, [location, superId, status, propertyUrl]);
 
   useEffect(() => {
     return () => {

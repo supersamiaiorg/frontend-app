@@ -26,7 +26,7 @@ interface HistoryItem {
 
 export function AppSidebar() {
   const [location, navigate] = useLocation();
-  const searchParams = new URLSearchParams(location.split('?')[1]);
+  const searchParams = new URLSearchParams(window.location.search);
   const currentSuperId = searchParams.get('id');
 
   const { data: history = [] } = useQuery<HistoryItem[]>({

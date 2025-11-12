@@ -115,6 +115,19 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Fixes (November 12, 2025)
 
+### History Navigation Bug Fix
+
+**Issue**: Clicking properties in the history sidebar did not show property details - only fresh analyses displayed results
+
+**Root Cause**: `useLocation()` from wouter only returns the pathname, not query parameters. Code was using `location.split('?')[1]` which always returned `undefined`, so the super_id from `/?id={super_id}` was never read.
+
+**Fixes Applied**:
+- `Home.tsx`: Changed from `location.split('?')[1]` to `window.location.search` to properly read query parameters
+- `AppSidebar.tsx`: Same fix to properly highlight the active history item
+- `Home.tsx`: Updated useEffect dependencies to include all referenced state variables (superId, status, propertyUrl)
+
+**Result**: Clicking history items now properly navigates to `/?id={super_id}` and displays the stored property details immediately
+
 ### Data Extraction Bug Fixes
 
 **Issue**: Floorplan and Image Condition tabs were showing "No data available" even with complete webhook payloads
