@@ -34,13 +34,20 @@ Preferred communication style: Simple, everyday language.
 
 **Routing**: Wouter for client-side routing (lightweight alternative to React Router)
 
+**Layout**: Application uses shadcn Sidebar component for navigation
+- SidebarProvider wraps the entire app in App.tsx
+- AppSidebar displays chronological history of property analyses
+- Main content area shows PropertyInput and analysis results
+- Header with sidebar toggle and app title
+
 **Key UI Components**:
+- AppSidebar: Chronological history list with thumbnails, address, price, bed/bath info
 - PropertyInput: URL submission form
 - PropertyGallery: Image carousel for property photos
 - PropertyHeader: Address, price, and basic stats display
 - PropertyTabs: Tabbed interface for different data sections
 - StatusBadge: Real-time analysis status indicator
-- Section-specific tabs: OverviewTab, DetailsTab, LocationTab, AnalyticsTab, PhotosTab
+- Section-specific tabs: OverviewTab, DetailsTab, LocationTab, FloorplanAnalysisTab, ImageConditionTab, AnalyticsTab, PhotosTab
 
 ### Backend Architecture
 
@@ -55,6 +62,7 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/analysis/callback`: Receives analysis results from n8n webhook
 - `GET /api/stream`: Server-Sent Events endpoint for real-time status updates
 - `GET /api/results`: Fetches stored analysis results by super_id or property_url
+- `GET /api/history`: Returns chronological list of recent analyses with lightweight metadata
 - `POST /api/test/simulate-callback`: Test mode simulation endpoint
 
 **Data Flow**:
@@ -78,6 +86,8 @@ Preferred communication style: Simple, everyday language.
 
 **Storage Strategy**: In-memory storage using Map data structures
 - Dual-index storage: by super_id and by property_url
+- Chronological history array (capped at 50 most recent entries)
+- Deduplication: storing same super_id updates existing entry instead of creating duplicate
 - No persistent database (data lost on server restart)
 - Suitable for MVP/demo purposes
 - Note: Application is configured for PostgreSQL with Drizzle ORM but not actively using it
@@ -88,10 +98,11 @@ Preferred communication style: Simple, everyday language.
 - Zod schemas for validation
 
 **Storage Interface** (`IStorage`):
-- `storeResult()`: Save normalized property data
+- `storeResult()`: Save normalized property data with deduplication
 - `getResultBySuperId()`: Retrieve by super_id
 - `getResultByPropertyUrl()`: Retrieve by property_url  
 - `getAllResults()`: Fetch all stored results
+- `getAllResultsChrono()`: Fetch chronological history (newest first, max 50 entries)
 
 ### Data Normalization
 
@@ -101,6 +112,82 @@ Preferred communication style: Simple, everyday language.
 - Processes photos, floorplans, EPCs, stations, schools
 - Constructs snapshot with transaction type, bedrooms, bathrooms, size, price, address, agent info
 - Handles missing/null data gracefully
+
+## Features
+
+### History Sidebar
+
+**Purpose**: View and access previous property analyses without re-running them
+
+**Architecture**:
+- **URL-based selection**: Uses query parameters (`/?id={super_id}`) for deep-linking
+- **Auto-refresh**: History list updates every 10 seconds and after completing new analyses
+- **Deduplication**: Each super_id appears only once in history (updates replace old entries)
+- **Chronological ordering**: Most recent analyses appear first
+- **Capacity**: Stores up to 50 most recent analyses
+
+**UI Components**:
+- AppSidebar component (`client/src/components/AppSidebar.tsx`)
+- Displays: thumbnail, address, price, bedrooms, bathrooms, relative timestamp
+- "New Analysis" button to clear selection and start fresh analysis
+
+**Data Flow**:
+1. User clicks history item → URL updates to `/?id={super_id}`
+2. Home.tsx detects URL change via useLocation hook
+3. Reads super_id from URL params → updates local state
+4. Clears propertyUrl and closes any active SSE connections
+5. Sets status to "complete" (bypasses analyzing state)
+6. useQuery fetches data from `/api/results?super_id={id}`
+7. Property data renders without status badge (read-only view)
+
+**New Analysis Flow**:
+1. User clicks "New Analysis" or submits new URL
+2. Navigate to `/` (clears query params)
+3. Triggers normal SSE-based analysis workflow
+4. On completion, invalidates history query to show new entry
+
+**Backend**:
+- `GET /api/history` endpoint returns lightweight metadata for sidebar
+- Extracts: super_id, property_url, received_at, address, price, thumbnail, bed/bath
+- Uses `getAllResultsChrono()` from storage interface
+
+### Floorplan Analysis Tab
+
+**Purpose**: Display parsed floorplan CSV data with room dimensions and total area
+
+**Data Source**: `fp_inline_csv` field from n8n webhook (floorplan_data)
+
+**Features**:
+- Room-by-room breakdown table with metric and imperial dimensions
+- Door and window counts per room
+- Total area summary (metric and imperial)
+- Annotated floorplan image display (when available)
+- Download links for CSV/JSON resources
+
+**Implementation**:
+- Uses Papaparse library for robust CSV parsing
+- Handles quoted fields, embedded newlines, empty columns
+- Filters to show only segment rows (actual rooms)
+- Maps column names from CSV headers
+
+### Image Condition Analysis Tab
+
+**Purpose**: Display AI-powered property condition assessment based on photos
+
+**Data Source**: `image_condition_data` from n8n webhook
+
+**Features**:
+- Overall condition score (0-100) with color-coded badge
+- Images grouped by room type (living space, kitchen, bedroom, bathroom, facade, neighborhood)
+- Per-image condition scores with labels (Excellent, Above Average, Below Average, Poor)
+- Detailed AI reasoning for each assessment
+- Weighted average calculation based on total image count
+
+**Score Interpretation**:
+- 80-100: Excellent (green)
+- 60-79: Above Average (blue)
+- 40-59: Below Average (yellow)
+- 0-39: Poor (red)
 
 ## External Dependencies
 
