@@ -200,30 +200,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  if (TEST_MODE) {
+  if (process.env.NODE_ENV === "development") {
     app.post("/api/test/simulate-callback", async (req, res) => {
       try {
-        console.log("[/api/test/simulate-callback] Simulating callback with fixture data");
+        console.log("[/api/test/simulate-callback] Simulating callback");
         
-        const fixturePath = path.join(process.cwd(), "server/fixtures/sample_callback.json");
+        let payload = req.body;
         
-        if (!fs.existsSync(fixturePath)) {
-          return res.status(404).json({ 
-            error: "Fixture file not found", 
-            path: fixturePath,
-            help: "Create server/fixtures/sample_callback.json with sample webhook data"
-          });
+        if (!payload || Object.keys(payload).length === 0) {
+          const fixturePath = path.join(process.cwd(), "server/fixtures/sample_callback.json");
+          
+          if (!fs.existsSync(fixturePath)) {
+            return res.status(400).json({ 
+              error: "No payload provided and fixture file not found", 
+              help: "Send a payload in the request body OR create server/fixtures/sample_callback.json"
+            });
+          }
+
+          payload = JSON.parse(fs.readFileSync(fixturePath, "utf-8"));
         }
 
-        const fixtureData = JSON.parse(fs.readFileSync(fixturePath, "utf-8"));
-        
-        const property_url = req.body.property_url;
-        if (property_url && fixtureData[0]?.final_result?.data_captured?.metadata) {
-          fixtureData[0].final_result.data_captured.metadata.property_url = property_url;
-        }
-
-        const normalized = normalize(fixtureData);
+        const normalized = normalize(payload);
         await storage.storeResult(normalized);
+        
+        console.log(`[/api/test/simulate-callback] Stored result for super_id: ${normalized.key.super_id}`);
         
         if (normalized.key.property_url) {
           notifySSEClients(normalized.key.property_url, normalized.key.super_id);

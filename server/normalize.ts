@@ -9,17 +9,22 @@ export function normalize(body: any): NormalizedResult {
   const fr = root.final_result ?? {};
   
   const fp = fr.floorplan_data ?? {};
-  const ica = fr.image_condition_data?.ica_overall_analysis ?? null;
+  const ica = fr.image_condition_data ?? null;
   const dc = fr.data_captured ?? null;
+
+  console.log("[normalize] Processing data_captured:", dc ? "exists" : "null");
 
   let snap: any = null;
   try {
     const results = dc?.data?.results ?? [];
+    console.log("[normalize] Found results:", results.length);
     const rawDatas = results
-      .map((r: any) => r?.raw_data?.data)
+      .map((r: any) => r?.raw_data?.data || r?.raw_data)
       .filter(Boolean);
+    console.log("[normalize] Extracted rawDatas:", rawDatas.length);
 
     const pref = rawDatas.find((d: any) => d?.transactionType || d?.text || d?.price) ?? rawDatas[0];
+    console.log("[normalize] Selected pref:", pref ? "exists" : "null");
 
     if (pref) {
       const photos = (pref.photos || pref.images || []).map((p: any) => ({

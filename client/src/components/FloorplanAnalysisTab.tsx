@@ -46,11 +46,11 @@ function parseCSV(csv: string): FloorplanRow[] {
     const roomName = row['Room_Name']?.trim();
     const isSegment = row['is_segment']?.trim();
     
-    if (roomName && isSegment === 'segment') {
+    if (roomName) {
       rows.push({
         floor_name: row['Floor_Name']?.trim() || '',
         room_name: roomName,
-        is_segment: isSegment,
+        is_segment: isSegment || '',
         room_id: row['Room_id']?.trim() || '',
         no_of_door: row['No_of_door']?.trim() || '0',
         no_of_window: row['No_of_window']?.trim() || '0',
