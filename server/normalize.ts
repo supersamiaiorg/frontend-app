@@ -13,6 +13,11 @@ export function normalize(body: any): NormalizedResult {
   const dc = fr.data_captured ?? null;
 
   console.log("[normalize] Processing data_captured:", dc ? "exists" : "null");
+  console.log("[normalize] Floorplan keys:", Object.keys(fp));
+  console.log("[normalize] CSV length:", fp.fp_inline_csv?.length || 0);
+  console.log("[normalize] CSV lines count:", fp.fp_inline_csv?.split('\n').length || 0);
+  console.log("[normalize] Image condition exists:", !!ica);
+  console.log("[normalize] Has ica_overall_analysis:", !!ica?.ica_overall_analysis);
 
   let snap: any = null;
   try {

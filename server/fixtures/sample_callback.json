@@ -1,150 +1,102 @@
 [
   {
-    "super_id": "8bc157a6-1930-4fec-8d3c-13b71cbc09b8",
+    "super_id": "8cc00e6f-1456-42a7-9f6b-86e553d4924b",
     "final_result": {
-      "floorplan_data": {
-        "inline_csv": "Room,Width,Length,Area\nLiving Room,4.5,5.2,23.4\nKitchen,3.0,4.0,12.0\nBedroom,3.5,4.0,14.0\nBathroom,2.0,2.5,5.0",
-        "fp_json_csv_url": null,
-        "total_area_csv_url": null,
-        "fp_json_file_url": null,
-        "image_labelme_side_by_side_url": null
-      },
-      "image_condition_data": {
-        "ica_overall_analysis": {
-          "overall_condition_label": "Above Average",
-          "average_score": 72.73,
-          "total_assessments": 11,
-          "areas_of_concern": 0,
-          "confidence": "Medium"
-        }
-      },
       "data_captured": {
-        "context": "property_analysis",
+        "super_id": "8cc00e6f-1456-42a7-9f6b-86e553d4924b",
+        "context": "fetch_combined",
         "status": "completed",
-        "timestamp": "2025-01-11T18:00:00Z",
+        "timestamp": "2025-11-12T07:41:13.312402+00:00",
         "summary": {
-          "total_endpoints": 5,
-          "completed_endpoints": 5
+          "total_endpoints": 2,
+          "completed_endpoints": 2
         },
         "metadata": {
           "property_id": 154508327,
-          "property_url": "https://www.rightmove.co.uk/properties/154508327",
-          "client_id": "test-client",
-          "callback_url": "http://localhost:5000/api/analysis/callback"
+          "property_url": "https://www.rightmove.co.uk/properties/154508327#/?channel=RES_LET",
+          "client_id": "fe2c7655-0860-4d98-9034-cd5e1ac90a41",
+          "callback_url": "https://supersami.app.n8n.cloud/webhook/7c239632-5c3b-4e1e-b58f-51948d780413"
         },
         "data": {
+          "property_id": 154508327,
+          "property_url": "https://www.rightmove.co.uk/properties/154508327#/?channel=RES_LET",
+          "super_id": "8cc00e6f-1456-42a7-9f6b-86e553d4924b",
           "results": [
             {
-              "api_endpoint": "buy/property-for-sale/detail",
+              "api_endpoint": "properties/details",
               "property_id": 154508327,
+              "super_id": "8cc00e6f-1456-42a7-9f6b-86e553d4924b",
               "stored": true,
+              "message": "Successfully stored property 154508327 details.",
               "raw_data": {
                 "data": {
-                  "id": "154508327",
-                  "transactionType": "rent",
+                  "identifier": 154508327,
+                  "transactionType": "RENT",
                   "channel": "RES_LET",
                   "bedrooms": 1,
                   "bathrooms": 1,
-                  "displayAddress": "Isledon Road, N7 7LP",
                   "address": "Isledon Road, N7 7LP",
-                  "postcode": "N7 7LP",
-                  "prices": {
-                    "primaryPrice": "£1,600 pcm",
-                    "secondaryPrice": "£369 pw"
-                  },
-                  "customer": {
-                    "branchDisplayName": "David Andrew, Archway",
-                    "logoPath": "https://media.rightmove.co.uk/85k/84953/branch_logo_84953_0003.jpeg",
-                    "displayAddress": "671 Holloway Road, London, N19 5SE"
-                  },
-                  "contactInfo": {
-                    "telephoneNumbers": {
-                      "localNumber": "020 3840 3854"
-                    }
-                  },
-                  "text": {
-                    "pageTitle": "1 bedroom flat to rent - Isledon Road, N7 7LP",
-                    "description": "A charming one-bedroom property set on the first floor of this period conversion, located moments from Finsbury Park station for easy access to and from central London. This property features a spacious open plan living/kitchen area, modern kitchen, a modern three-piece bathroom, wooden floor throughout, ample storage, high ceilings and gas central heating."
-                  },
-                  "keyFeatures": [
-                    "One Bedroom",
-                    "Open Plan",
-                    "Period Conversion",
-                    "Good Transport Links",
-                    "Comprising 370sqft/34.4sqm",
-                    "EPC Rating: C",
-                    "Offered Part Furnished",
-                    "Available Now"
-                  ],
-                  "images": [
-                    {
-                      "url": "https://media.rightmove.co.uk/85k/84953/154508327/84953_101291013823_IMG_00_0000.jpeg",
-                      "resizedImageUrls": {
-                        "size135x100": "https://media.rightmove.co.uk/dir/85k/84953/154508327/84953_101291013823_IMG_00_0000_max_135x100.jpeg",
-                        "size656x437": "https://media.rightmove.co.uk/dir/85k/84953/154508327/84953_101291013823_IMG_00_0000_max_656x437.jpeg"
-                      }
-                    },
-                    {
-                      "url": "https://media.rightmove.co.uk/85k/84953/154508327/84953_101291013823_IMG_01_0000.jpeg",
-                      "resizedImageUrls": {
-                        "size135x100": "https://media.rightmove.co.uk/dir/85k/84953/154508327/84953_101291013823_IMG_01_0000_max_135x100.jpeg",
-                        "size656x437": "https://media.rightmove.co.uk/dir/85k/84953/154508327/84953_101291013823_IMG_01_0000_max_656x437.jpeg"
-                      }
-                    }
-                  ],
+                  "photos": [],
                   "floorplans": [
                     {
-                      "url": "https://media.rightmove.co.uk/85k/84953/154508327/84953_101291013823_FLP_00_0000.jpeg",
-                      "caption": "Floorplan 1",
-                      "resizedFloorplanUrls": {
-                        "size296x197": "https://media.rightmove.co.uk/dir/85k/84953/154508327/84953_101291013823_FLP_00_0000_max_296x197.jpeg"
-                      }
+                      "url": "https://media.rightmove.co.uk/85k/84953/154508327/84953_101291013823_FLP_00_0000.jpeg"
                     }
                   ],
-                  "epcGraphs": [
-                    {
-                      "url": "https://media.rightmove.co.uk/85k/84953/154508327/84953_101291013823_EPCGRAPH_00_0000.jpeg",
-                      "caption": "EPC 1"
-                    }
-                  ],
-                  "location": {
-                    "latitude": 51.56123,
-                    "longitude": -0.10855
+                  "price": {
+                    "primary": "£1,600 pcm"
                   },
-                  "staticMapImgUrls": {
-                    "staticMapImgUrlDesktopLarge": "https://media.rightmove.co.uk/map/_generate?width=768&height=347&zoomLevel=15&latitude=51.56123&longitude=-0.10855"
-                  },
-                  "nearestStations": [
-                    {
-                      "name": "Arsenal Station",
-                      "distance": 0.2,
-                      "unit": "miles"
-                    },
-                    {
-                      "name": "Finsbury Park Station",
-                      "distance": 0.3,
-                      "unit": "miles"
-                    }
-                  ],
-                  "infoReelItems": [
-                    {
-                      "type": "BEDROOMS",
-                      "primaryText": "1"
-                    },
-                    {
-                      "type": "BATHROOMS",
-                      "primaryText": "1"
-                    },
-                    {
-                      "type": "SIZE",
-                      "primaryText": "370 sq ft",
-                      "secondaryText": "34.4 sq m"
-                    }
-                  ]
+                  "size": {
+                    "primary": "370 sq ft"
+                  }
                 }
               }
             }
           ]
+        }
+      },
+      "floorplan_data": {
+        "fp_inline_csv": "Floor_Name,Room_Name,is_segment,Room_id,No_of_door,No_of_window,No_of_room_points,Min X Pixels,Min Y Pixels,Max X Pixels,Max Y Pixels,dimensions_imperial,dimensions_metric,Max Area Metric,Max Area Imperial,Max Area Pixels,Actual Area Pixels,Pixel ratio,Scale Metric,Scale Imperial,Calculated Sq Area Metric,Calculated Floor Total Sq Area Metric,calculated_area_imperial,Calculated Floor Total Sq Area Imperial,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23\nfirst_floor,Reception Room,segment,1.0,1.0,2.0,8.0,43.0,44.0,307.0,382.0,\"16'5\"\" x 12'10\"\"\",5.01m x 3.92m,19.6392,210.6805555555556,89232.0,84501.5,0.946986507082661,0.0002200914470145,0.0023610426254657,18.6,31.9,199.51,342.19,,,,,,,,,,,,,,,,,,,,,,,,\nfirst_floor,Kitchen,not segment,2.0,,,0.0,,,,,Unknown,Unknown,,,,,,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,,,,,,,,,,,,,,,,,,\nfirst_floor,Bedroom,segment,3.0,1.0,1.0,8.0,433.0,44.0,625.0,257.0,\"10'3\"\" x 8'5\"\"\",3.12m x 2.57m,8.0184,86.27083333333333,40896.0,34817.0,0.85135465571205,0.0001960680751173,0.0021095176382368,6.83,28.42,73.45,305.73,,,,,,,,,,,,,,,,,,,,,,,,\nfirst_floor,Storage Area (AI),segment,4.0,0.0,0.0,4.0,226.0,44.0,307.0,71.0,Unknown,Unknown,,,2187.0,2133.5,0.9755372656607224,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,,,,,,,,,,,,,,,,,,\nfirst_floor,Bathroom/WC (AI),segment,5.0,1.0,0.0,4.0,318.0,44.0,442.0,189.0,Unknown,Unknown,,,17980.0,17546.0,0.9758620689655172,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,,,,,,,,,,,,,,,,,,\nfirst_floor,Entry (AI),segment,6.0,4.0,0.0,4.0,317.0,200.0,422.0,257.0,Unknown,Unknown,,,5985.0,5932.5,0.9912280701754386,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,,,,,,,,,,,,,,,,,,\n,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,\n",
+        "fp_json_csv_url": "https://floorsbucket.s3.eu-north-1.amazonaws.com/processed_images_folder/user_8cc00e6f-1456-42a7-9f6b-86e553d4924b_property_%22154508327%22/floorid_fp1/all_floors.csv",
+        "fp_json_file_url": "https://floorsbucket.s3.eu-north-1.amazonaws.com/processed_images_folder/user_8cc00e6f-1456-42a7-9f6b-86e553d4924b_property_%22154508327%22/floorid_fp1/all_floors_json.json",
+        "total_area_csv_url": "https://floorsbucket.s3.eu-north-1.amazonaws.com/processed_images_folder/user_8cc00e6f-1456-42a7-9f6b-86e553d4924b_property_%22154508327%22/floorid_fp1/total_area.csv",
+        "image_labelme_side_by_side_url": "https://floorsbucket.s3.eu-north-1.amazonaws.com/processed_images_folder/user_8cc00e6f-1456-42a7-9f6b-86e553d4924b_property_%22154508327%22/floorid_fp1/side_by_side_labelme.png"
+      },
+      "image_condition_data": {
+        "ica_overall_analysis": {
+          "property_url": "8cc00e6f-1456-42a7-9f6b-86e553d4924b",
+          "stages": {
+            "detailed_analysis": {
+              "internal_living_space": [
+                {
+                  "image_number": 1,
+                  "condition_label": "Above Average",
+                  "condition_score": 65,
+                  "reasoning": "Modern furniture with clean look and good finishes",
+                  "room_type": "living room"
+                }
+              ],
+              "internal_kitchen_space": [
+                {
+                  "image_number": 1,
+                  "condition_label": "Excellent",
+                  "condition_score": 90,
+                  "reasoning": "Well-maintained with modern finishes and high-quality fixtures",
+                  "room_type": "kitchen"
+                }
+              ]
+            },
+            "overall_condition": {
+              "overall_condition_label": "Excellent",
+              "average_score": 75.18,
+              "label_distribution": {
+                "Above Average": 0.6363636363636364,
+                "Excellent": 0.36363636363636365
+              },
+              "total_assessments": 11,
+              "areas_of_concern": 0,
+              "confidence": "Medium"
+            }
+          }
         }
       }
     }

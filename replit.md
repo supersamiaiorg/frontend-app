@@ -113,6 +113,25 @@ Preferred communication style: Simple, everyday language.
 - Constructs snapshot with transaction type, bedrooms, bathrooms, size, price, address, agent info
 - Handles missing/null data gracefully
 
+## Recent Fixes (November 12, 2025)
+
+### Data Extraction Bug Fixes
+
+**Issue**: Floorplan and Image Condition tabs were showing "No data available" even with complete webhook payloads
+
+**Root Causes Identified**:
+1. **Image Condition Tab**: Frontend was looking for `stages.condition_assessment` but webhook sends `stages.detailed_analysis`
+2. **CSV Row Filtering**: Kitchen room with `is_segment="not segment"` was being filtered out (removed segment-only filter)
+3. **Data Path Mapping**: Normalize function correctly passes full `image_condition_data` object with `ica_overall_analysis` wrapper
+
+**Fixes Applied**:
+- `ImageConditionTab.tsx`: Changed data path from `condition_assessment` to `detailed_analysis`
+- `ImageConditionTab.tsx`: Simplified display to show only key metrics (overall score, label, distribution, room breakdown) instead of all detailed image data
+- `FloorplanAnalysisTab.tsx`: Show all rooms with names regardless of segment type
+- `normalize.ts`: Maintain proper data structure from webhook (full `image_condition_data` object)
+
+**Sample Data**: Complete webhook response stored in `server/fixtures/sample_callback.json` for testing and reference
+
 ## Features
 
 ### History Sidebar
@@ -174,20 +193,20 @@ Preferred communication style: Simple, everyday language.
 
 **Purpose**: Display AI-powered property condition assessment based on photos
 
-**Data Source**: `image_condition_data` from n8n webhook
+**Data Source**: `image_condition_data.ica_overall_analysis` from n8n webhook
 
-**Features**:
-- Overall condition score (0-100) with color-coded badge
-- Images grouped by room type (living space, kitchen, bedroom, bathroom, facade, neighborhood)
-- Per-image condition scores with labels (Excellent, Above Average, Below Average, Poor)
-- Detailed AI reasoning for each assessment
-- Weighted average calculation based on total image count
+**Features** (Simplified Key Metrics Display):
+- Overall condition score (0-100) with color-coded badge and label
+- Confidence level (High/Medium/Low)
+- Label distribution percentages (% of images in each category)
+- Total assessments count
+- Room breakdown summary showing average score per room type with icon indicators
 
 **Score Interpretation**:
 - 80-100: Excellent (green)
-- 60-79: Above Average (blue)
-- 40-59: Below Average (yellow)
-- 0-39: Poor (red)
+- 65-79: Above Average (blue)
+- 50-64: Below Average (yellow)
+- 0-49: Poor (red)
 
 ## External Dependencies
 
