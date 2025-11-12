@@ -2,7 +2,7 @@ import type { Express, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage, addSSEClient, removeSSEClient, notifySSEClients, sseClients } from "./storage";
 import { normalize } from "./normalize";
-import { triggerRequestSchema } from "@shared/schema";
+import { triggerRequestSchema, startedCallbackSchema, completedCallbackSchema } from "@shared/schema";
 import { z } from "zod";
 import * as fs from "fs";
 import * as path from "path";
@@ -20,17 +20,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[/api/trigger] Received property_url: ${property_url}`);
       console.log(`[/api/trigger] Callback URL: ${workflow_callback_url}`);
 
-      const placeholderEntry = normalize({
-        final_result: {
-          data_captured: {
-            metadata: { property_url }
-          }
-        }
-      }, "analyzing");
-
-      await storage.storeResult(placeholderEntry);
-      console.log(`[/api/trigger] Created placeholder entry for property_url: ${property_url}`);
-
       const payload = {
         property_url,
         workflow_callback_url
@@ -42,41 +31,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("[/api/trigger] TEST_MODE enabled - not calling n8n webhook");
         return res.json({ 
           success: true, 
-          message: "TEST_MODE: Use POST /api/test/simulate-callback to trigger callback",
+          message: "TEST_MODE: Use POST /api/test/simulate-callback to trigger 'started' and 'complete' callbacks",
           workflow_callback_url
         });
       }
 
-      try {
-        const response = await fetch(N8N_WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+      const response = await fetch(N8N_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
 
-        if (!response.ok) {
-          throw new Error(`n8n webhook returned ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log(`[/api/trigger] n8n response:`, data);
-
-        res.json({ success: true, message: "Analysis triggered successfully" });
-      } catch (webhookError) {
-        console.error("[/api/trigger] Webhook call failed:", webhookError);
-        
-        const errorEntry = normalize({
-          final_result: {
-            data_captured: {
-              metadata: { property_url }
-            }
-          }
-        }, "error");
-        await storage.storeResult(errorEntry);
-        console.log(`[/api/trigger] Marked placeholder as error for property_url: ${property_url}`);
-        
-        throw webhookError;
+      if (!response.ok) {
+        throw new Error(`n8n webhook returned ${response.status}`);
       }
+
+      const data = await response.json();
+      console.log(`[/api/trigger] n8n response:`, data);
+
+      res.json({ success: true, message: "Analysis triggered successfully" });
     } catch (error) {
       console.error("[/api/trigger] Error:", error);
       if (error instanceof z.ZodError) {
@@ -92,57 +65,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("[/api/analysis/callback] Raw body keys:", Object.keys(req.body));
       
       const payload = req.body.body ?? req.body;
+      const status = payload.status;
       
+      console.log("[/api/analysis/callback] Callback status:", status);
       console.log("[/api/analysis/callback] Payload keys:", Object.keys(payload));
-      console.log("[/api/analysis/callback] Payload preview:", JSON.stringify(payload).substring(0, 500) + "...");
       
-      if (payload.final_result === "[object Object]") {
-        console.error("[/api/analysis/callback] PAYLOAD ERROR: final_result is stringified as '[object Object]'");
-        
-        const propertyUrl = payload.property_url || payload.final_result?.data_captured?.metadata?.property_url;
-        if (propertyUrl) {
-          const errorEntry = normalize({
+      if (status === "started") {
+        try {
+          const validated = startedCallbackSchema.parse(payload);
+          console.log(`[/api/analysis/callback] Started callback for super_id: ${validated.super_id}`);
+          
+          const placeholderEntry = normalize({
+            super_id: validated.super_id,
             final_result: {
               data_captured: {
-                metadata: { property_url: propertyUrl }
+                metadata: { property_url: validated.property_url }
               }
             }
-          }, "error");
-          await storage.storeResult(errorEntry);
-          console.log(`[/api/analysis/callback] Marked as error for property_url: ${propertyUrl}`);
+          }, "started");
+          
+          await storage.storeResult(placeholderEntry);
+          console.log(`[/api/analysis/callback] Created placeholder entry for super_id: ${validated.super_id}`);
+          
+          if (validated.property_url) {
+            sseClients
+              .filter(client => client.property_url === validated.property_url)
+              .forEach(client => {
+                try {
+                  client.res.write(`data: ${JSON.stringify({ ready: false, status: "started", super_id: validated.super_id })}\n\n`);
+                } catch (error) {
+                  console.error("Error notifying SSE client about started status:", error);
+                }
+              });
+          }
+          
+          return res.json({ success: true, super_id: validated.super_id, status: "started" });
+        } catch (validationError) {
+          console.error("[/api/analysis/callback] Validation error for 'started' callback:", validationError);
+          return res.status(400).json({ 
+            error: "Invalid 'started' callback payload", 
+            details: validationError instanceof z.ZodError ? validationError.errors : String(validationError)
+          });
         }
-        
-        return res.status(400).json({ 
-          error: "Invalid n8n payload format",
-          details: "The 'final_result' field is being sent as the string '[object Object]' instead of an actual JSON object. In your n8n HTTP Request node: 1) Set Content-Type to 'application/json', 2) Enable 'Send Body as JSON', 3) Use an expression like {{ $json }} to map the entire webhook payload as JSON, not as key/value pairs."
-        });
       }
-
-      const normalized = normalize(payload);
-
-      const hasFloorplan = normalized.floorplan.inline_csv || normalized.floorplan.csv_url;
-      if (!hasFloorplan) {
-        console.warn("[/api/analysis/callback] Missing floorplan CSV data");
-        console.warn("[/api/analysis/callback] Floorplan object:", JSON.stringify(normalized.floorplan));
-        
-        const errorNormalized = normalize(payload, "error");
-        await storage.storeResult(errorNormalized);
-        console.log(`[/api/analysis/callback] Marked as error for property_url: ${errorNormalized.key.property_url}`);
-        
-        return res.status(400).json({ 
-          error: "floorplan CSV missing",
-          details: "Neither inline_csv nor csv_url found in floorplan data. Check that the n8n workflow is sending the complete final_result object with floorplan_data."
-        });
+      
+      if (status === "complete") {
+        try {
+          const validated = completedCallbackSchema.parse(payload);
+          console.log(`[/api/analysis/callback] Complete callback for super_id: ${validated.super_id}`);
+          
+          const existing = await storage.getResultBySuperId(validated.super_id);
+          if (existing && existing.key.property_url && existing.key.property_url !== validated.property_url) {
+            console.error(`[/api/analysis/callback] Property URL mismatch for super_id ${validated.super_id}`);
+            console.error(`  Existing: ${existing.key.property_url}`);
+            console.error(`  Received: ${validated.property_url}`);
+            
+            const errorEntry = normalize({
+              super_id: validated.super_id,
+              final_result: {
+                data_captured: {
+                  metadata: { property_url: validated.property_url }
+                }
+              }
+            }, "error");
+            await storage.storeResult(errorEntry);
+            
+            return res.status(400).json({ 
+              error: "Property URL mismatch",
+              details: `The property_url for super_id ${validated.super_id} does not match the previously stored value`
+            });
+          }
+          
+          if (payload.final_result === "[object Object]") {
+            console.error("[/api/analysis/callback] PAYLOAD ERROR: final_result is stringified as '[object Object]'");
+            
+            const errorEntry = normalize({
+              super_id: validated.super_id,
+              final_result: {
+                data_captured: {
+                  metadata: { property_url: validated.property_url }
+                }
+              }
+            }, "error");
+            await storage.storeResult(errorEntry);
+            
+            return res.status(400).json({ 
+              error: "Invalid n8n payload format",
+              details: "The 'final_result' field is being sent as the string '[object Object]' instead of an actual JSON object. In your n8n HTTP Request node: 1) Set Content-Type to 'application/json', 2) Enable 'Send Body as JSON', 3) Use an expression like {{ $json }} to map the entire webhook payload as JSON, not as key/value pairs."
+            });
+          }
+          
+          const normalized = normalize(validated);
+          
+          const hasFloorplan = normalized.floorplan.inline_csv || normalized.floorplan.csv_url;
+          if (!hasFloorplan) {
+            console.warn("[/api/analysis/callback] Missing floorplan CSV data");
+            console.warn("[/api/analysis/callback] Floorplan object:", JSON.stringify(normalized.floorplan));
+            
+            const errorNormalized = normalize(validated, "error");
+            await storage.storeResult(errorNormalized);
+            console.log(`[/api/analysis/callback] Marked as error for super_id: ${validated.super_id}`);
+            
+            return res.status(400).json({ 
+              error: "floorplan CSV missing",
+              details: "Neither inline_csv nor csv_url found in floorplan data. Check that the n8n workflow is sending the complete final_result object with floorplan_data."
+            });
+          }
+          
+          await storage.storeResult(normalized);
+          console.log(`[/api/analysis/callback] Stored complete result for super_id: ${normalized.key.super_id}`);
+          
+          if (normalized.key.property_url) {
+            notifySSEClients(normalized.key.property_url, normalized.key.super_id);
+          }
+          
+          return res.json({ success: true, super_id: normalized.key.super_id, status: "complete" });
+        } catch (validationError) {
+          console.error("[/api/analysis/callback] Validation error for 'complete' callback:", validationError);
+          
+          const superId = payload.super_id;
+          const propertyUrl = payload.property_url;
+          if (superId && propertyUrl) {
+            const errorEntry = normalize({
+              super_id: superId,
+              final_result: {
+                data_captured: {
+                  metadata: { property_url: propertyUrl }
+                }
+              }
+            }, "error");
+            await storage.storeResult(errorEntry);
+            console.log(`[/api/analysis/callback] Marked as error for super_id: ${superId}`);
+          }
+          
+          return res.status(400).json({ 
+            error: "Invalid 'complete' callback payload", 
+            details: validationError instanceof z.ZodError ? validationError.errors : String(validationError)
+          });
+        }
       }
-
-      await storage.storeResult(normalized);
-      console.log(`[/api/analysis/callback] Stored result for super_id: ${normalized.key.super_id}`);
-
-      if (normalized.key.property_url) {
-        notifySSEClients(normalized.key.property_url, normalized.key.super_id);
-      }
-
-      res.json({ success: true, super_id: normalized.key.super_id });
+      
+      console.error(`[/api/analysis/callback] Unknown status: ${status}`);
+      return res.status(400).json({ 
+        error: "Invalid callback status",
+        details: `Status must be either 'started' or 'complete', received: ${status}`
+      });
     } catch (error) {
       console.error("[/api/analysis/callback] Error:", error);
       res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });

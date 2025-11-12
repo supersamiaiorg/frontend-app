@@ -6,7 +6,7 @@ export const normalizedResultSchema = z.object({
     property_url: z.string().nullable(),
     received_at: z.string(),
   }),
-  analysis_status: z.enum(["analyzing", "complete", "error"]),
+  analysis_status: z.enum(["started", "complete", "error"]),
   floorplan: z.object({
     inline_csv: z.string().nullable(),
     csv_url: z.string().nullable(),
@@ -106,3 +106,24 @@ export const triggerRequestSchema = z.object({
 });
 
 export type TriggerRequest = z.infer<typeof triggerRequestSchema>;
+
+export const startedCallbackSchema = z.object({
+  super_id: z.string().min(1, "super_id is required"),
+  status: z.literal("started"),
+  property_url: z.string().url("Invalid property URL"),
+});
+
+export type StartedCallback = z.infer<typeof startedCallbackSchema>;
+
+export const completedCallbackSchema = z.object({
+  super_id: z.string().min(1, "super_id is required"),
+  status: z.literal("complete"),
+  property_url: z.string().url("Invalid property URL"),
+  final_result: z.any(),
+});
+
+export type CompletedCallback = z.infer<typeof completedCallbackSchema>;
+
+export const callbackSchema = z.union([startedCallbackSchema, completedCallbackSchema]);
+
+export type CallbackPayload = z.infer<typeof callbackSchema>;

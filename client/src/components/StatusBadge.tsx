@@ -2,14 +2,14 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 
 interface StatusBadgeProps {
-  status: "analyzing" | "complete" | "error" | "waiting" | "timeout";
+  status: "started" | "complete" | "error" | "waiting" | "timeout";
   message?: string;
 }
 
 export default function StatusBadge({ status, message }: StatusBadgeProps) {
   const getStatusConfig = () => {
     switch (status) {
-      case "analyzing":
+      case "started":
         return {
           icon: <Loader2 className="h-3 w-3 animate-spin" />,
           label: message || "Analyzing property...",

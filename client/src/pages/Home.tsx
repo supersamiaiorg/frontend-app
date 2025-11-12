@@ -16,7 +16,7 @@ import AnalyticsTab from "@/components/AnalyticsTab";
 import PhotosTab from "@/components/PhotosTab";
 import type { NormalizedResult } from "@shared/schema";
 
-type AnalysisStatus = "waiting" | "analyzing" | "complete" | "error" | "timeout";
+type AnalysisStatus = "waiting" | "started" | "complete" | "error" | "timeout";
 
 export default function Home() {
   const [location, navigate] = useLocation();
@@ -30,8 +30,7 @@ export default function Home() {
       return apiRequest("POST", "/api/trigger", { property_url: url });
     },
     onSuccess: () => {
-      setStatus("analyzing");
-      connectToSSE();
+      console.log("[Trigger] Successfully triggered n8n workflow");
     },
     onError: (error) => {
       console.error("Trigger error:", error);
@@ -53,10 +52,11 @@ export default function Home() {
     }
   });
 
-  const connectToSSE = () => {
-    if (!propertyUrl) return;
+  const connectToSSE = (url?: string) => {
+    const urlToUse = url || propertyUrl;
+    if (!urlToUse) return;
 
-    const params = new URLSearchParams({ property_url: propertyUrl });
+    const params = new URLSearchParams({ property_url: urlToUse });
     const eventSource = new EventSource(`/api/stream?${params}`);
     eventSourceRef.current = eventSource;
 
@@ -70,7 +70,14 @@ export default function Home() {
       
       try {
         const data = JSON.parse(event.data);
-        if (data.ready && data.super_id) {
+        
+        if (data.status === "started" && data.super_id) {
+          console.log("[SSE] Received 'started' notification, keeping connection open");
+          setSuperId(data.super_id);
+          setStatus("started");
+          queryClient.invalidateQueries({ queryKey: ['/api/history'] });
+        } else if (data.ready && data.super_id) {
+          console.log("[SSE] Received 'complete' notification, closing connection");
           setSuperId(data.super_id);
           setStatus("complete");
           queryClient.invalidateQueries({ queryKey: ['/api/history'] });
@@ -124,15 +131,18 @@ export default function Home() {
     setPropertyUrl(url);
     setSuperId(null);
     setStatus("waiting");
+    
+    connectToSSE(url);
+    
     triggerMutation.mutate(url, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['/api/history'] });
+        console.log("[handleAnalyze] Trigger successful, SSE connection already established");
       }
     });
   };
 
   const mockPropertyData = result ? transformResultToMockData(result) : null;
-  const isActiveAnalysis = status === "waiting" || status === "analyzing";
+  const isActiveAnalysis = status === "waiting" || status === "started";
 
   return (
     <div className="min-h-screen bg-background">

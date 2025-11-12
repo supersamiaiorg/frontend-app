@@ -4,7 +4,7 @@ function firstItem(body: any) {
   return Array.isArray(body) ? body[0] : body;
 }
 
-export function normalize(body: any, analysis_status: "analyzing" | "complete" | "error" = "complete"): NormalizedResult {
+export function normalize(body: any, analysis_status: "started" | "complete" | "error" = "complete"): NormalizedResult {
   const root = firstItem(body) ?? {};
   const fr = root.final_result ?? {};
   

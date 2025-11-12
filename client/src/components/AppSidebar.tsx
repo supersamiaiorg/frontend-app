@@ -18,7 +18,7 @@ interface HistoryItem {
   super_id: string | null;
   property_url: string | null;
   received_at: string;
-  analysis_status: "analyzing" | "complete" | "error";
+  analysis_status: "started" | "complete" | "error";
   address: string;
   price: string | null;
   thumbnail: string | null;
@@ -72,11 +72,11 @@ export function AppSidebar() {
               )}
 
               {history.map((item, index) => {
-                const StatusIcon = item.analysis_status === "analyzing" ? Loader2 : 
+                const StatusIcon = item.analysis_status === "started" ? Loader2 : 
                                   item.analysis_status === "complete" ? CheckCircle2 : AlertCircle;
-                const statusVariant = item.analysis_status === "analyzing" ? "secondary" : 
+                const statusVariant = item.analysis_status === "started" ? "secondary" : 
                                      item.analysis_status === "complete" ? "default" : "destructive";
-                const statusLabel = item.analysis_status === "analyzing" ? "Analyzing..." : 
+                const statusLabel = item.analysis_status === "started" ? "Analyzing..." : 
                                    item.analysis_status === "complete" ? "Complete" : "Error";
                 
                 return (
@@ -105,7 +105,7 @@ export function AppSidebar() {
                               className="text-xs flex items-center gap-1 flex-shrink-0"
                               data-testid={`badge-status-${item.super_id || item.property_url}`}
                             >
-                              <StatusIcon className={`h-3 w-3 ${item.analysis_status === "analyzing" ? "animate-spin" : ""}`} />
+                              <StatusIcon className={`h-3 w-3 ${item.analysis_status === "started" ? "animate-spin" : ""}`} />
                               {statusLabel}
                             </Badge>
                           </div>
