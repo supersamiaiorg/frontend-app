@@ -6,6 +6,7 @@ export const normalizedResultSchema = z.object({
     property_url: z.string().nullable(),
     received_at: z.string(),
   }),
+  analysis_status: z.enum(["analyzing", "complete", "error"]),
   floorplan: z.object({
     inline_csv: z.string().nullable(),
     csv_url: z.string().nullable(),

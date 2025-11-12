@@ -10,13 +10,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { Home, Clock } from "lucide-react";
+import { Home, Clock, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface HistoryItem {
   super_id: string | null;
   property_url: string | null;
   received_at: string;
+  analysis_status: "analyzing" | "complete" | "error";
   address: string;
   price: string | null;
   thumbnail: string | null;
@@ -69,47 +71,66 @@ export function AppSidebar() {
                 </div>
               )}
 
-              {history.map((item, index) => (
-                <SidebarMenuItem key={item.super_id || index}>
-                  <SidebarMenuButton
-                    onClick={() => handleSelectHistory(item.super_id)}
-                    isActive={currentSuperId === item.super_id}
-                    data-testid={`button-history-${item.super_id}`}
-                    className="h-auto py-2"
-                  >
-                    <div className="flex items-start gap-3 w-full">
-                      {item.thumbnail && (
-                        <img
-                          src={item.thumbnail}
-                          alt=""
-                          className="w-12 h-12 rounded object-cover flex-shrink-0"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate" data-testid={`text-address-${item.super_id}`}>
-                          {item.address}
-                        </div>
-                        {item.price && (
-                          <div className="text-xs text-primary font-semibold" data-testid={`text-price-${item.super_id}`}>
-                            {item.price}
-                          </div>
+              {history.map((item, index) => {
+                const StatusIcon = item.analysis_status === "analyzing" ? Loader2 : 
+                                  item.analysis_status === "complete" ? CheckCircle2 : AlertCircle;
+                const statusVariant = item.analysis_status === "analyzing" ? "secondary" : 
+                                     item.analysis_status === "complete" ? "default" : "destructive";
+                const statusLabel = item.analysis_status === "analyzing" ? "Analyzing..." : 
+                                   item.analysis_status === "complete" ? "Complete" : "Error";
+                
+                return (
+                  <SidebarMenuItem key={item.super_id || item.property_url || index}>
+                    <SidebarMenuButton
+                      onClick={() => handleSelectHistory(item.super_id)}
+                      isActive={currentSuperId === item.super_id}
+                      data-testid={`button-history-${item.super_id || item.property_url}`}
+                      className="h-auto py-2"
+                    >
+                      <div className="flex items-start gap-3 w-full">
+                        {item.thumbnail && (
+                          <img
+                            src={item.thumbnail}
+                            alt=""
+                            className="w-12 h-12 rounded object-cover flex-shrink-0"
+                          />
                         )}
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                          {item.bedrooms !== null && (
-                            <span>{item.bedrooms} bed</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="font-medium text-sm truncate flex-1" data-testid={`text-address-${item.super_id || item.property_url}`}>
+                              {item.address}
+                            </div>
+                            <Badge 
+                              variant={statusVariant} 
+                              className="text-xs flex items-center gap-1 flex-shrink-0"
+                              data-testid={`badge-status-${item.super_id || item.property_url}`}
+                            >
+                              <StatusIcon className={`h-3 w-3 ${item.analysis_status === "analyzing" ? "animate-spin" : ""}`} />
+                              {statusLabel}
+                            </Badge>
+                          </div>
+                          {item.price && (
+                            <div className="text-xs text-primary font-semibold" data-testid={`text-price-${item.super_id || item.property_url}`}>
+                              {item.price}
+                            </div>
                           )}
-                          {item.bathrooms !== null && (
-                            <span>{item.bathrooms} bath</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(item.received_at), { addSuffix: true })}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            {item.bedrooms !== null && (
+                              <span>{item.bedrooms} bed</span>
+                            )}
+                            {item.bathrooms !== null && (
+                              <span>{item.bathrooms} bath</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {formatDistanceToNow(new Date(item.received_at), { addSuffix: true })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

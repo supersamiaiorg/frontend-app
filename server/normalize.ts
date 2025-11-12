@@ -4,7 +4,7 @@ function firstItem(body: any) {
   return Array.isArray(body) ? body[0] : body;
 }
 
-export function normalize(body: any): NormalizedResult {
+export function normalize(body: any, analysis_status: "analyzing" | "complete" | "error" = "complete"): NormalizedResult {
   const root = firstItem(body) ?? {};
   const fr = root.final_result ?? {};
   
@@ -120,6 +120,7 @@ export function normalize(body: any): NormalizedResult {
       property_url: dc?.metadata?.property_url ?? dc?.data?.property_url ?? null,
       received_at: new Date().toISOString()
     },
+    analysis_status,
     floorplan: {
       inline_csv: fp.fp_inline_csv ?? null,
       csv_url: fp.fp_json_csv_url ?? null,

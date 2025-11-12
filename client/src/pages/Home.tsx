@@ -41,7 +41,7 @@ export default function Home() {
 
   const { data: result } = useQuery<NormalizedResult>({
     queryKey: ["/api/results", superId, propertyUrl],
-    enabled: !!superId || (!!propertyUrl && status === "complete"),
+    enabled: !!superId || !!propertyUrl,
     queryFn: async () => {
       const params = new URLSearchParams();
       if (superId) params.set("super_id", superId);
@@ -124,7 +124,11 @@ export default function Home() {
     setPropertyUrl(url);
     setSuperId(null);
     setStatus("waiting");
-    triggerMutation.mutate(url);
+    triggerMutation.mutate(url, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['/api/history'] });
+      }
+    });
   };
 
   const mockPropertyData = result ? transformResultToMockData(result) : null;

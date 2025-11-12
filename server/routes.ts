@@ -20,6 +20,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[/api/trigger] Received property_url: ${property_url}`);
       console.log(`[/api/trigger] Callback URL: ${workflow_callback_url}`);
 
+      const placeholderEntry = normalize({
+        final_result: {
+          data_captured: {
+            metadata: { property_url }
+          }
+        }
+      }, "analyzing");
+
+      await storage.storeResult(placeholderEntry);
+      console.log(`[/api/trigger] Created placeholder entry for property_url: ${property_url}`);
+
       const payload = {
         property_url,
         workflow_callback_url
@@ -36,20 +47,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const response = await fetch(N8N_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      try {
+        const response = await fetch(N8N_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
 
-      if (!response.ok) {
-        throw new Error(`n8n webhook returned ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`n8n webhook returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log(`[/api/trigger] n8n response:`, data);
+
+        res.json({ success: true, message: "Analysis triggered successfully" });
+      } catch (webhookError) {
+        console.error("[/api/trigger] Webhook call failed:", webhookError);
+        
+        const errorEntry = normalize({
+          final_result: {
+            data_captured: {
+              metadata: { property_url }
+            }
+          }
+        }, "error");
+        await storage.storeResult(errorEntry);
+        console.log(`[/api/trigger] Marked placeholder as error for property_url: ${property_url}`);
+        
+        throw webhookError;
       }
-
-      const data = await response.json();
-      console.log(`[/api/trigger] n8n response:`, data);
-
-      res.json({ success: true, message: "Analysis triggered successfully" });
     } catch (error) {
       console.error("[/api/trigger] Error:", error);
       if (error instanceof z.ZodError) {
@@ -71,6 +98,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (payload.final_result === "[object Object]") {
         console.error("[/api/analysis/callback] PAYLOAD ERROR: final_result is stringified as '[object Object]'");
+        
+        const propertyUrl = payload.property_url || payload.final_result?.data_captured?.metadata?.property_url;
+        if (propertyUrl) {
+          const errorEntry = normalize({
+            final_result: {
+              data_captured: {
+                metadata: { property_url: propertyUrl }
+              }
+            }
+          }, "error");
+          await storage.storeResult(errorEntry);
+          console.log(`[/api/analysis/callback] Marked as error for property_url: ${propertyUrl}`);
+        }
+        
         return res.status(400).json({ 
           error: "Invalid n8n payload format",
           details: "The 'final_result' field is being sent as the string '[object Object]' instead of an actual JSON object. In your n8n HTTP Request node: 1) Set Content-Type to 'application/json', 2) Enable 'Send Body as JSON', 3) Use an expression like {{ $json }} to map the entire webhook payload as JSON, not as key/value pairs."
@@ -83,6 +124,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!hasFloorplan) {
         console.warn("[/api/analysis/callback] Missing floorplan CSV data");
         console.warn("[/api/analysis/callback] Floorplan object:", JSON.stringify(normalized.floorplan));
+        
+        const errorNormalized = normalize(payload, "error");
+        await storage.storeResult(errorNormalized);
+        console.log(`[/api/analysis/callback] Marked as error for property_url: ${errorNormalized.key.property_url}`);
+        
         return res.status(400).json({ 
           error: "floorplan CSV missing",
           details: "Neither inline_csv nor csv_url found in floorplan data. Check that the n8n workflow is sending the complete final_result object with floorplan_data."
@@ -185,6 +231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           super_id: result.key.super_id,
           property_url: result.key.property_url,
           received_at: result.key.received_at,
+          analysis_status: result.analysis_status,
           address: snapshot?.address || snapshot?.postcode || result.key.property_url || 'Unknown Property',
           price: snapshot?.price?.primary || null,
           thumbnail: firstPhoto?.thumb || firstPhoto?.url || null,
