@@ -202,8 +202,14 @@ Preferred communication style: Simple, everyday language.
 
 **Environment Configuration**:
 - `PUBLIC_BASE_URL`: Public HTTPS URL for callback endpoint (must be accessible to n8n)
-- `TEST_MODE`: Boolean flag to enable local simulation without calling n8n
+- `TEST_MODE`: Boolean flag to enable local simulation without calling n8n (currently set to "false" for production use)
 - `PORT`: Server port (defaults to 5000)
+
+**Concurrent Analysis Support**:
+- Users can submit multiple property URLs without waiting for previous analyses to complete
+- Input field never locks during analysis
+- Input clears automatically after each submission
+- Each analysis runs independently with its own SSE connection
 
 ### Database Setup
 

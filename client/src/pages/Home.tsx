@@ -142,7 +142,7 @@ export default function Home() {
           </div>
 
           <div className="space-y-4">
-            <PropertyInput onSubmit={handleAnalyze} isLoading={isActiveAnalysis} />
+            <PropertyInput onSubmit={handleAnalyze} />
             {isActiveAnalysis && (
               <div className="flex justify-center">
                 <StatusBadge status={status!} />

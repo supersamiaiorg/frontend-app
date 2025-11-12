@@ -5,16 +5,16 @@ import { Search } from "lucide-react";
 
 interface PropertyInputProps {
   onSubmit: (url: string) => void;
-  isLoading?: boolean;
 }
 
-export default function PropertyInput({ onSubmit, isLoading }: PropertyInputProps) {
+export default function PropertyInput({ onSubmit }: PropertyInputProps) {
   const [url, setUrl] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (url.trim()) {
       onSubmit(url.trim());
+      setUrl("");
     }
   };
 
@@ -29,17 +29,16 @@ export default function PropertyInput({ onSubmit, isLoading }: PropertyInputProp
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             className="pl-10 h-12"
-            disabled={isLoading}
             data-testid="input-property-url"
           />
         </div>
         <Button 
           type="submit" 
-          disabled={isLoading || !url.trim()}
+          disabled={!url.trim()}
           className="h-12 px-6"
           data-testid="button-analyze"
         >
-          {isLoading ? "Analyzing..." : "Analyze"}
+          Analyze
         </Button>
       </div>
     </form>
