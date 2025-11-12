@@ -23,6 +23,13 @@ export class MemStorage implements IStorage {
   async storeResult(result: NormalizedResult): Promise<void> {
     if (result.key.super_id) {
       this.bySuperIdMap.set(result.key.super_id, result);
+      
+      const existingIndex = this.chronologicalHistory.findIndex(
+        r => r.key.super_id === result.key.super_id
+      );
+      if (existingIndex !== -1) {
+        this.chronologicalHistory.splice(existingIndex, 1);
+      }
     }
     if (result.key.property_url) {
       this.byPropertyUrlMap.set(result.key.property_url, result);

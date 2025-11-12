@@ -31,11 +31,6 @@ export function AppSidebar() {
 
   const { data: history = [] } = useQuery<HistoryItem[]>({
     queryKey: ['/api/history'],
-    queryFn: async () => {
-      const response = await fetch('/api/history');
-      if (!response.ok) throw new Error('Failed to fetch history');
-      return response.json();
-    },
     refetchInterval: 10000,
   });
 
