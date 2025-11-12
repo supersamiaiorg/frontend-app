@@ -5,15 +5,19 @@ export interface IStorage {
   getResultBySuperId(super_id: string): Promise<NormalizedResult | undefined>;
   getResultByPropertyUrl(property_url: string): Promise<NormalizedResult | undefined>;
   getAllResults(): Promise<NormalizedResult[]>;
+  getAllResultsChrono(): Promise<NormalizedResult[]>;
 }
 
 export class MemStorage implements IStorage {
   private bySuperIdMap: Map<string, NormalizedResult>;
   private byPropertyUrlMap: Map<string, NormalizedResult>;
+  private chronologicalHistory: NormalizedResult[];
+  private readonly MAX_HISTORY_SIZE = 50;
 
   constructor() {
     this.bySuperIdMap = new Map();
     this.byPropertyUrlMap = new Map();
+    this.chronologicalHistory = [];
   }
 
   async storeResult(result: NormalizedResult): Promise<void> {
@@ -22,6 +26,12 @@ export class MemStorage implements IStorage {
     }
     if (result.key.property_url) {
       this.byPropertyUrlMap.set(result.key.property_url, result);
+    }
+    
+    this.chronologicalHistory.unshift(result);
+    
+    if (this.chronologicalHistory.length > this.MAX_HISTORY_SIZE) {
+      this.chronologicalHistory = this.chronologicalHistory.slice(0, this.MAX_HISTORY_SIZE);
     }
   }
 
@@ -35,6 +45,10 @@ export class MemStorage implements IStorage {
 
   async getAllResults(): Promise<NormalizedResult[]> {
     return Array.from(this.bySuperIdMap.values());
+  }
+
+  async getAllResultsChrono(): Promise<NormalizedResult[]> {
+    return this.chronologicalHistory;
   }
 }
 
