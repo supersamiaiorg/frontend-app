@@ -173,6 +173,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/history", async (req, res) => {
+    try {
+      const results = await storage.getAllResultsChrono();
+      
+      const history = results.map(result => {
+        const snapshot = result.data_captured?.snapshot;
+        const firstPhoto = snapshot?.media?.photos?.[0];
+        
+        return {
+          super_id: result.key.super_id,
+          property_url: result.key.property_url,
+          received_at: result.key.received_at,
+          address: snapshot?.address || snapshot?.postcode || result.key.property_url || 'Unknown Property',
+          price: snapshot?.price?.primary || null,
+          thumbnail: firstPhoto?.thumb || firstPhoto?.url || null,
+          bedrooms: snapshot?.bedrooms || null,
+          bathrooms: snapshot?.bathrooms || null,
+        };
+      });
+
+      res.json(history);
+    } catch (error) {
+      console.error("[/api/history] Error:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
   if (TEST_MODE) {
     app.post("/api/test/simulate-callback", async (req, res) => {
       try {
