@@ -25,6 +25,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workflow_callback_url
       };
 
+      console.log(`[/api/trigger] Sending payload to n8n:`, JSON.stringify(payload));
+
       if (TEST_MODE) {
         console.log("[/api/trigger] TEST_MODE enabled - not calling n8n webhook");
         return res.json({ 
