@@ -111,7 +111,7 @@ export function normalize(body: any): NormalizedResult {
       received_at: new Date().toISOString()
     },
     floorplan: {
-      inline_csv: fp.inline_csv ?? null,
+      inline_csv: fp.fp_inline_csv ?? null,
       csv_url: fp.fp_json_csv_url ?? null,
       total_area_csv_url: fp.total_area_csv_url ?? null,
       json_url: fp.fp_json_file_url ?? null,

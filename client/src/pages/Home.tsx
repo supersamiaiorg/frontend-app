@@ -10,6 +10,8 @@ import PropertyTabs, { TabsContent } from "@/components/PropertyTabs";
 import OverviewTab from "@/components/OverviewTab";
 import DetailsTab from "@/components/DetailsTab";
 import LocationTab from "@/components/LocationTab";
+import FloorplanAnalysisTab from "@/components/FloorplanAnalysisTab";
+import ImageConditionTab from "@/components/ImageConditionTab";
 import AnalyticsTab from "@/components/AnalyticsTab";
 import PhotosTab from "@/components/PhotosTab";
 import type { NormalizedResult } from "@shared/schema";
@@ -148,6 +150,12 @@ export default function Home() {
                 <TabsContent value="location">
                   <LocationTab {...mockPropertyData.location} />
                 </TabsContent>
+                <TabsContent value="floorplan">
+                  <FloorplanAnalysisTab floorplanData={mockPropertyData.floorplan} />
+                </TabsContent>
+                <TabsContent value="image-condition">
+                  <ImageConditionTab imageConditionData={mockPropertyData.imageCondition} />
+                </TabsContent>
                 <TabsContent value="analytics">
                   <AnalyticsTab propertyData={mockPropertyData.analytics} />
                 </TabsContent>
@@ -230,6 +238,14 @@ function transformResultToMockData(result: NormalizedResult) {
       })) ?? [],
       postcode: snapshot.postcode ?? "N/A",
     },
+    floorplan: {
+      inline_csv: result.floorplan?.inline_csv ?? null,
+      csv_url: result.floorplan?.csv_url ?? null,
+      total_area_csv_url: result.floorplan?.total_area_csv_url ?? null,
+      json_url: result.floorplan?.json_url ?? null,
+      labelme_side_by_side_url: result.floorplan?.labelme_side_by_side_url ?? null,
+    },
+    imageCondition: result.image_condition,
     analytics: {
       bedrooms: snapshot.bedrooms ?? 0,
       bathrooms: snapshot.bathrooms ?? 0,
