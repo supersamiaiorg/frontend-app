@@ -62,14 +62,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/analysis/callback", async (req, res) => {
     try {
       console.log("[/api/analysis/callback] Received webhook callback");
-      console.log("[/api/analysis/callback] Body:", JSON.stringify(req.body, null, 2));
+      console.log("[/api/analysis/callback] Raw body keys:", Object.keys(req.body));
+      
+      const payload = req.body.body ?? req.body;
+      
+      console.log("[/api/analysis/callback] Payload keys:", Object.keys(payload));
+      console.log("[/api/analysis/callback] Payload preview:", JSON.stringify(payload).substring(0, 500) + "...");
+      
+      if (payload.final_result === "[object Object]") {
+        console.error("[/api/analysis/callback] PAYLOAD ERROR: final_result is stringified as '[object Object]'");
+        return res.status(400).json({ 
+          error: "Invalid n8n payload format",
+          details: "The 'final_result' field is being sent as the string '[object Object]' instead of an actual JSON object. In your n8n HTTP Request node: 1) Set Content-Type to 'application/json', 2) Enable 'Send Body as JSON', 3) Use an expression like {{ $json }} to map the entire webhook payload as JSON, not as key/value pairs."
+        });
+      }
 
-      const normalized = normalize(req.body);
+      const normalized = normalize(payload);
 
       const hasFloorplan = normalized.floorplan.inline_csv || normalized.floorplan.csv_url;
       if (!hasFloorplan) {
         console.warn("[/api/analysis/callback] Missing floorplan CSV data");
-        return res.status(400).json({ error: "floorplan CSV missing" });
+        console.warn("[/api/analysis/callback] Floorplan object:", JSON.stringify(normalized.floorplan));
+        return res.status(400).json({ 
+          error: "floorplan CSV missing",
+          details: "Neither inline_csv nor csv_url found in floorplan data. Check that the n8n workflow is sending the complete final_result object with floorplan_data."
+        });
       }
 
       await storage.storeResult(normalized);
