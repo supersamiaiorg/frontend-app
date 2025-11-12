@@ -15,14 +15,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/trigger", async (req, res) => {
     try {
       const { property_url } = triggerRequestSchema.parse(req.body);
-      const callback_url = `${PUBLIC_BASE_URL}/api/analysis/callback`;
+      const workflow_callback_url = `${PUBLIC_BASE_URL}/api/analysis/callback`;
 
       console.log(`[/api/trigger] Received property_url: ${property_url}`);
-      console.log(`[/api/trigger] Callback URL: ${callback_url}`);
+      console.log(`[/api/trigger] Callback URL: ${workflow_callback_url}`);
 
       const payload = {
         property_url,
-        callback_url
+        workflow_callback_url
       };
 
       if (TEST_MODE) {
@@ -30,7 +30,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ 
           success: true, 
           message: "TEST_MODE: Use POST /api/test/simulate-callback to trigger callback",
-          callback_url
+          workflow_callback_url
         });
       }
 
