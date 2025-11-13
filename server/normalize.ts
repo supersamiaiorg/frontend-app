@@ -4,7 +4,7 @@ function firstItem(body: any) {
   return Array.isArray(body) ? body[0] : body;
 }
 
-export function normalize(body: any, analysis_status: "started" | "complete" | "error" = "complete"): NormalizedResult {
+export function normalize(body: any, analysis_status: "waiting" | "started" | "complete" | "error" = "complete"): NormalizedResult {
   const root = firstItem(body) ?? {};
   const fr = root.final_result ?? {};
   
@@ -117,6 +117,7 @@ export function normalize(body: any, analysis_status: "started" | "complete" | "
   return {
     key: {
       super_id: root.super_id ?? dc?.super_id ?? null,
+      run_id: root.run_id ?? null,
       property_url: dc?.metadata?.property_url ?? dc?.data?.property_url ?? null,
       received_at: new Date().toISOString()
     },
