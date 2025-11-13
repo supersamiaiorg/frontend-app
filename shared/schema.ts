@@ -3,10 +3,11 @@ import { z } from "zod";
 export const normalizedResultSchema = z.object({
   key: z.object({
     super_id: z.string().nullable(),
+    run_id: z.string().nullable(),
     property_url: z.string().nullable(),
     received_at: z.string(),
   }),
-  analysis_status: z.enum(["started", "complete", "error"]),
+  analysis_status: z.enum(["waiting", "started", "complete", "error"]),
   floorplan: z.object({
     inline_csv: z.string().nullable(),
     csv_url: z.string().nullable(),

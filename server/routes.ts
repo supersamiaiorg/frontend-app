@@ -16,6 +16,7 @@ import {
 import { z } from "zod";
 import * as fs from "fs";
 import * as path from "path";
+import { randomUUID } from "crypto";
 
 const N8N_WEBHOOK_URL =
   "https://supersami.app.n8n.cloud/webhook/d36312c5-f379-4b22-9f6c-e4d44f50af4c";

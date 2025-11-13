@@ -6,6 +6,13 @@ import StatusBadge from "@/components/StatusBadge";
 
 type AnalysisStatus = "waiting" | "started" | "complete" | "error" | "timeout";
 
+interface HistoryItem {
+  super_id: string;
+  property_url: string;
+  analysis_status: "started" | "complete" | "error";
+  timestamp: string;
+}
+
 export default function Home() {
   // Status shown under the input only for error/timeout
   const [status, setStatus] = useState<AnalysisStatus | null>(null);
@@ -13,6 +20,9 @@ export default function Home() {
     null,
   );
   const eventSourceRef = useRef<EventSource | null>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
+  const pollingTimeoutRef = useRef<number | null>(null);
+  const [usePolling, setUsePolling] = useState(false);
 
   const triggerMutation = useMutation({
     mutationFn: async (url: string) => {
@@ -83,13 +93,92 @@ export default function Home() {
     };
 
     es.onerror = () => {
-      console.error("[SSE] connection error");
-      setStatus("error");
-      setActiveAnalysisUrl(null);
+      console.error("[SSE] connection error - switching to polling");
       es.close();
       eventSourceRef.current = null;
       window.clearTimeout(timeoutId);
+      
+      setUsePolling(true);
+      startPolling(url);
     };
+  };
+
+  const startPolling = (url: string) => {
+    console.log("[Polling] Starting polling for:", url);
+    
+    if (pollingIntervalRef.current) {
+      window.clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    
+    if (pollingTimeoutRef.current) {
+      window.clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
+    }
+
+    const pollForUpdates = async () => {
+      try {
+        const response = await apiRequest("GET", "/api/history");
+        const history = await response.json() as HistoryItem[];
+        
+        const matchingItems = history
+          .filter(item => item.property_url === url)
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
+        const matchingItem = matchingItems[0];
+
+        if (matchingItem) {
+          console.log("[Polling] Found matching item:", matchingItem);
+          
+          if (matchingItem.analysis_status === "started") {
+            setStatus("started");
+            queryClient.invalidateQueries({ queryKey: ["/api/history"] });
+          } else if (matchingItem.analysis_status === "complete") {
+            setStatus("complete");
+            setActiveAnalysisUrl(null);
+            queryClient.invalidateQueries({ queryKey: ["/api/history"] });
+            
+            if (pollingIntervalRef.current) {
+              window.clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            if (pollingTimeoutRef.current) {
+              window.clearTimeout(pollingTimeoutRef.current);
+              pollingTimeoutRef.current = null;
+            }
+          } else if (matchingItem.analysis_status === "error") {
+            setStatus("error");
+            setActiveAnalysisUrl(null);
+            
+            if (pollingIntervalRef.current) {
+              window.clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            if (pollingTimeoutRef.current) {
+              window.clearTimeout(pollingTimeoutRef.current);
+              pollingTimeoutRef.current = null;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[Polling] Error fetching history:", error);
+      }
+    };
+
+    pollForUpdates();
+    pollingIntervalRef.current = window.setInterval(pollForUpdates, 3000);
+
+    pollingTimeoutRef.current = window.setTimeout(() => {
+      console.warn("[Polling] Timed out waiting for analysis");
+      
+      if (pollingIntervalRef.current) {
+        window.clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      
+      setStatus("timeout");
+      setActiveAnalysisUrl(null);
+    }, 12 * 60 * 1000);
   };
 
   // Cleanup on unmount
@@ -98,6 +187,14 @@ export default function Home() {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
+      }
+      if (pollingIntervalRef.current) {
+        window.clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      if (pollingTimeoutRef.current) {
+        window.clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
       }
     };
   }, []);
@@ -108,6 +205,17 @@ export default function Home() {
 
     setActiveAnalysisUrl(trimmed);
     setStatus("waiting");
+    setUsePolling(false);
+    
+    if (pollingIntervalRef.current) {
+      window.clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    if (pollingTimeoutRef.current) {
+      window.clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
+    }
+    
     connectToSSE(trimmed);
     triggerMutation.mutate(trimmed);
   };
