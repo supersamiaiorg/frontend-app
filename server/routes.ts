@@ -21,8 +21,23 @@ import { randomUUID } from "crypto";
 const N8N_WEBHOOK_URL =
   "https://supersami.app.n8n.cloud/webhook/d36312c5-f379-4b22-9f6c-e4d44f50af4c";
 const TEST_MODE = process.env.TEST_MODE === "true";
-const PUBLIC_BASE_URL =
-  process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+
+// Automatically detect the correct base URL based on environment
+function getBaseUrl(): string {
+  // If running in deployed/published Replit app
+  if (process.env.REPLIT_DEPLOYMENT === "1") {
+    const slug = process.env.REPL_SLUG;
+    const owner = process.env.REPL_OWNER;
+    if (slug && owner) {
+      return `https://${slug}.${owner}.replit.app`;
+    }
+  }
+  
+  // Development environment: use PUBLIC_BASE_URL if set, otherwise localhost
+  return process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+}
+
+const PUBLIC_BASE_URL = getBaseUrl();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // trigger analysis via n8n
