@@ -165,37 +165,37 @@ export function AppSidebar() {
 
                         {/* Text content */}
                         <div className="flex flex-col flex-1 min-w-0 gap-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">
-                                {item.address ??
-                                  item.property_url ??
-                                  "Unknown property"}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">
+                              {item.address ??
+                                item.property_url ??
+                                "Unknown property"}
+                            </p>
+                            {subtitle && (
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {subtitle}
                               </p>
-                              {subtitle && (
-                                <p className="text-[11px] text-muted-foreground truncate">
-                                  {subtitle}
-                                </p>
-                              )}
-                            </div>
+                            )}
+                          </div>
 
+                          <div className="flex items-center justify-between gap-2">
                             <Badge
                               variant="outline"
-                              className={`flex items-center gap-1 px-1.5 py-0 text-[10px] font-normal ${status.className}`}
+                              className={`flex items-center gap-1 px-1.5 py-0 text-[10px] font-normal flex-shrink-0 ${status.className}`}
                             >
                               <Icon
                                 className={`h-3 w-3 ${status.spin ? "animate-spin" : ""}`}
                               />
                               {status.label}
                             </Badge>
-                          </div>
 
-                          {timeAgo && (
-                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              <span>{timeAgo}</span>
-                            </div>
-                          )}
+                            {timeAgo && (
+                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                <span>{timeAgo}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </SidebarMenuButton>
