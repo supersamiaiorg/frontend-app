@@ -9,8 +9,13 @@ type AnalysisStatus = "waiting" | "started" | "complete" | "error" | "timeout";
 interface HistoryItem {
   super_id: string;
   property_url: string;
-  analysis_status: "started" | "complete" | "error";
-  timestamp: string;
+  received_at: string;
+  analysis_status: "waiting" | "started" | "complete" | "error";
+  address?: string;
+  price?: string | null;
+  thumbnail?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
 }
 
 export default function Home() {
@@ -123,7 +128,7 @@ export default function Home() {
         
         const matchingItems = history
           .filter(item => item.property_url === url)
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
         
         const matchingItem = matchingItems[0];
 
