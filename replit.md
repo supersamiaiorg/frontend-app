@@ -18,7 +18,7 @@ The frontend is built with React and Vite, utilizing shadcn/ui (based on Radix U
 
 The backend uses Express.js with TypeScript. It provides API endpoints for triggering analysis (`POST /api/trigger`), receiving webhook callbacks (`POST /api/analysis/callback`), streaming real-time updates via SSE (`GET /api/stream`), fetching results (`GET /api/results`), and retrieving analysis history (`GET /api/history`). The system employs a non-polling architecture where the backend calls an n8n webhook, which then posts results back to the application. Real-time updates are pushed to the frontend via SSE, with automatic polling fallback when SSE fails (common in published environments). 
 
-**Environment Detection**: The callback URL is automatically determined based on the runtime environment. In deployed/published apps, it detects `REPLIT_DEPLOYMENT`, `REPL_SLUG`, and `REPL_OWNER` environment variables to construct the correct `https://<slug>.<owner>.replit.app` URL. In development, it uses `PUBLIC_BASE_URL` from workspace secrets or defaults to `http://localhost:5000`. This ensures n8n callbacks are routed to the correct environment without manual configuration.
+**Environment Detection**: The callback URL is automatically determined based on the runtime environment. In deployed/published apps, it detects `REPLIT_DEPLOYMENT === "1"` and parses `REPLIT_DOMAINS` to extract the published `.replit.app` domain (e.g., `https://supersami-analysis.rolfgroenewold.replit.app`). In development, it uses `PUBLIC_BASE_URL` from workspace secrets or defaults to `http://localhost:5000`. This ensures n8n callbacks are routed to the correct environment without manual configuration. Resolution order: REPLIT_DOMAINS → PUBLIC_BASE_URL → localhost.
 
 ### Data Storage
 
@@ -44,7 +44,7 @@ A normalization layer (`server/normalize.ts`) transforms raw n8n webhook payload
     - `PUBLIC_BASE_URL` (optional workspace secret for development callback URL)
     - `TEST_MODE` (enables simulation mode, bypasses n8n webhook)
     - `PORT` (server port, defaults to 5000)
-    - Auto-detected in production: `REPLIT_DEPLOYMENT`, `REPL_SLUG`, `REPL_OWNER`
+    - Auto-detected in production: `REPLIT_DEPLOYMENT`, `REPLIT_DOMAINS`
 
 ### UI Component Libraries
 

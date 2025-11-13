@@ -26,15 +26,42 @@ const TEST_MODE = process.env.TEST_MODE === "true";
 function getBaseUrl(): string {
   // If running in deployed/published Replit app
   if (process.env.REPLIT_DEPLOYMENT === "1") {
-    const slug = process.env.REPL_SLUG;
-    const owner = process.env.REPL_OWNER;
-    if (slug && owner) {
-      return `https://${slug}.${owner}.replit.app`;
+    // REPLIT_DOMAINS contains comma-separated list of all domains
+    const domains = process.env.REPLIT_DOMAINS;
+    
+    if (domains) {
+      console.log("[getBaseUrl] REPLIT_DOMAINS:", domains);
+      
+      // Parse comma-separated domains
+      const domainList = domains.split(",").map(d => d.trim()).filter(d => d.length > 0);
+      
+      if (domainList.length > 0) {
+        // Prefer non-workspace .replit.app domains first
+        const nonWorkspaceReplitDomain = domainList.find(d => 
+          d.endsWith(".replit.app") && !d.startsWith("workspace.")
+        );
+        
+        // Fall back to any .replit.app domain
+        const anyReplitDomain = domainList.find(d => d.endsWith(".replit.app"));
+        
+        // If no .replit.app domain, use the first custom domain
+        const selectedDomain = nonWorkspaceReplitDomain || anyReplitDomain || domainList[0];
+        
+        const baseUrl = `https://${selectedDomain}`;
+        console.log("[getBaseUrl] Using deployed domain:", baseUrl);
+        return baseUrl;
+      }
+      
+      console.warn("[getBaseUrl] REPLIT_DOMAINS is empty");
+    } else {
+      console.warn("[getBaseUrl] REPLIT_DEPLOYMENT=1 but REPLIT_DOMAINS not available");
     }
   }
   
   // Development environment: use PUBLIC_BASE_URL if set, otherwise localhost
-  return process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+  const devUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+  console.log("[getBaseUrl] Using development URL:", devUrl);
+  return devUrl;
 }
 
 const PUBLIC_BASE_URL = getBaseUrl();
