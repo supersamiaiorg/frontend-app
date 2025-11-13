@@ -14,46 +14,91 @@ import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { Home, Clock, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
+type AnalysisStatus =
+  | "waiting"
+  | "started"
+  | "complete"
+  | "error"
+  | "timeout"
+  | string;
+
 interface HistoryItem {
   super_id: string | null;
   property_url: string | null;
-  received_at: string;
-  analysis_status: "started" | "complete" | "error";
-  address: string;
-  price: string | null;
-  thumbnail: string | null;
-  bedrooms: number | null;
-  bathrooms: number | null;
+  received_at: string | null;
+  analysis_status?: AnalysisStatus;
+  address?: string | null;
+  price?: string | null;
+  thumbnail?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+}
+
+function statusConfig(status?: AnalysisStatus) {
+  switch (status) {
+    case "started":
+      return {
+        icon: Loader2,
+        label: "In progress",
+        className: "text-blue-500 border-blue-500",
+        spin: true,
+      };
+    case "complete":
+      return {
+        icon: CheckCircle2,
+        label: "Complete",
+        className: "text-emerald-500 border-emerald-500",
+        spin: false,
+      };
+    case "error":
+    case "timeout":
+      return {
+        icon: AlertCircle,
+        label: status === "timeout" ? "Timed out" : "Error",
+        className: "text-red-500 border-red-500",
+        spin: false,
+      };
+    default:
+      return {
+        icon: Clock,
+        label: "Queued",
+        className: "text-muted-foreground border-muted-foreground/40",
+        spin: false,
+      };
+  }
 }
 
 export function AppSidebar() {
   const [location, navigate] = useLocation();
-  const searchParams = new URLSearchParams(window.location.search);
-  const currentSuperId = searchParams.get('id');
+
+  // active super_id is taken from /property/:id
+  let currentSuperId: string | null = null;
+  if (location.startsWith("/property/")) {
+    currentSuperId =
+      location.replace("/property/", "").split(/[?#]/)[0] || null;
+  }
 
   const { data: history = [] } = useQuery<HistoryItem[]>({
-    queryKey: ['/api/history'],
+    queryKey: ["/api/history"],
     refetchInterval: 10000,
   });
 
   const handleSelectHistory = (superId: string | null) => {
     if (superId) {
-      navigate(`/?id=${superId}`);
+      navigate(`/property/${superId}`);
     } else {
-      navigate('/');
+      navigate("/");
     }
   };
 
   return (
-    <Sidebar data-testid="sidebar-history">
+    <Sidebar className="border-r border-border">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Recent Analyses
-          </SidebarGroupLabel>
+          <SidebarGroupLabel>Recent Analyses</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {/* New Analysis button */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => handleSelectHistory(null)}
@@ -66,65 +111,91 @@ export function AppSidebar() {
               </SidebarMenuItem>
 
               {history.length === 0 && (
-                <div className="px-3 py-6 text-sm text-muted-foreground text-center">
-                  No analysis history yet
-                </div>
+                <SidebarMenuItem>
+                  <div className="px-2 py-3 text-xs text-muted-foreground">
+                    No analyses yet. Start by entering a Rightmove URL.
+                  </div>
+                </SidebarMenuItem>
               )}
 
-              {history.map((item, index) => {
-                const StatusIcon = item.analysis_status === "started" ? Loader2 : 
-                                  item.analysis_status === "complete" ? CheckCircle2 : AlertCircle;
-                const statusVariant = item.analysis_status === "started" ? "secondary" : 
-                                     item.analysis_status === "complete" ? "default" : "destructive";
-                const statusLabel = item.analysis_status === "started" ? "Analyzing..." : 
-                                   item.analysis_status === "complete" ? "Complete" : "Error";
-                
+              {history.map((item) => {
+                const isActive =
+                  item.super_id && item.super_id === currentSuperId;
+                const status = statusConfig(item.analysis_status);
+                const Icon = status.icon;
+
+                const subtitleParts: string[] = [];
+                if (item.price) subtitleParts.push(item.price);
+                if (item.bedrooms != null)
+                  subtitleParts.push(`${item.bedrooms} bed`);
+                if (item.bathrooms != null)
+                  subtitleParts.push(`${item.bathrooms} bath`);
+                const subtitle = subtitleParts.join(" · ");
+
+                const timeAgo = item.received_at
+                  ? formatDistanceToNow(new Date(item.received_at), {
+                      addSuffix: true,
+                    })
+                  : null;
+
                 return (
-                  <SidebarMenuItem key={item.super_id || item.property_url || index}>
+                  <SidebarMenuItem
+                    key={item.super_id ?? item.property_url ?? Math.random()}
+                  >
                     <SidebarMenuButton
                       onClick={() => handleSelectHistory(item.super_id)}
-                      isActive={currentSuperId === item.super_id}
-                      data-testid={`button-history-${item.super_id || item.property_url}`}
-                      className="h-auto py-2"
+                      isActive={isActive}
+                      className="items-start py-3"
                     >
                       <div className="flex items-start gap-3 w-full">
-                        {item.thumbnail && (
-                          <img
-                            src={item.thumbnail}
-                            alt=""
-                            className="w-12 h-12 rounded object-cover flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="font-medium text-sm truncate flex-1" data-testid={`text-address-${item.super_id || item.property_url}`}>
-                              {item.address}
-                            </div>
-                            <Badge 
-                              variant={statusVariant} 
-                              className="text-xs flex items-center gap-1 flex-shrink-0"
-                              data-testid={`badge-status-${item.super_id || item.property_url}`}
-                            >
-                              <StatusIcon className={`h-3 w-3 ${item.analysis_status === "started" ? "animate-spin" : ""}`} />
-                              {statusLabel}
-                            </Badge>
-                          </div>
-                          {item.price && (
-                            <div className="text-xs text-primary font-semibold" data-testid={`text-price-${item.super_id || item.property_url}`}>
-                              {item.price}
+                        {/* Thumbnail */}
+                        <div className="h-10 w-14 rounded-md bg-muted overflow-hidden flex-shrink-0">
+                          {item.thumbnail ? (
+                            <img
+                              src={item.thumbnail}
+                              alt="Thumbnail"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">
+                              No image
                             </div>
                           )}
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                            {item.bedrooms !== null && (
-                              <span>{item.bedrooms} bed</span>
-                            )}
-                            {item.bathrooms !== null && (
-                              <span>{item.bathrooms} bath</span>
-                            )}
+                        </div>
+
+                        {/* Text content */}
+                        <div className="flex flex-col flex-1 min-w-0 gap-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">
+                                {item.address ??
+                                  item.property_url ??
+                                  "Unknown property"}
+                              </p>
+                              {subtitle && (
+                                <p className="text-[11px] text-muted-foreground truncate">
+                                  {subtitle}
+                                </p>
+                              )}
+                            </div>
+
+                            <Badge
+                              variant="outline"
+                              className={`flex items-center gap-1 px-1.5 py-0 text-[10px] font-normal ${status.className}`}
+                            >
+                              <Icon
+                                className={`h-3 w-3 ${status.spin ? "animate-spin" : ""}`}
+                              />
+                              {status.label}
+                            </Badge>
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {formatDistanceToNow(new Date(item.received_at), { addSuffix: true })}
-                          </div>
+
+                          {timeAgo && (
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              <span>{timeAgo}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </SidebarMenuButton>

@@ -3,60 +3,66 @@ import type { NormalizedResult } from "@shared/schema";
 export interface IStorage {
   storeResult(result: NormalizedResult): Promise<void>;
   getResultBySuperId(super_id: string): Promise<NormalizedResult | undefined>;
-  getResultByPropertyUrl(property_url: string): Promise<NormalizedResult | undefined>;
+  getResultByPropertyUrl(
+    property_url: string,
+  ): Promise<NormalizedResult | undefined>;
   getAllResults(): Promise<NormalizedResult[]>;
   getAllResultsChrono(): Promise<NormalizedResult[]>;
 }
 
 export class MemStorage implements IStorage {
-  private bySuperIdMap: Map<string, NormalizedResult>;
-  private byPropertyUrlMap: Map<string, NormalizedResult>;
-  private chronologicalHistory: NormalizedResult[];
+  private bySuperIdMap = new Map<string, NormalizedResult>();
+  private byPropertyUrlMap = new Map<string, NormalizedResult>();
+  private chronologicalHistory: NormalizedResult[] = [];
   private readonly MAX_HISTORY_SIZE = 50;
 
-  constructor() {
-    this.bySuperIdMap = new Map();
-    this.byPropertyUrlMap = new Map();
-    this.chronologicalHistory = [];
-  }
-
   async storeResult(result: NormalizedResult): Promise<void> {
-    if (result.key.super_id) {
-      this.bySuperIdMap.set(result.key.super_id, result);
-    }
-    if (result.key.property_url) {
-      this.byPropertyUrlMap.set(result.key.property_url, result);
-    }
-    
-    const existingIndex = this.chronologicalHistory.findIndex(
-      r => (r.key.super_id && r.key.super_id === result.key.super_id) ||
-           (r.key.property_url && r.key.property_url === result.key.property_url)
+    const superId = result.key.super_id;
+    const propertyUrl = result.key.property_url;
+
+    if (superId) this.bySuperIdMap.set(superId, result);
+    if (propertyUrl) this.byPropertyUrlMap.set(propertyUrl, result);
+
+    const idx = this.chronologicalHistory.findIndex(
+      (r) =>
+        (superId && r.key.super_id === superId) ||
+        (!superId && propertyUrl && r.key.property_url === propertyUrl),
     );
-    if (existingIndex !== -1) {
-      this.chronologicalHistory.splice(existingIndex, 1);
-    }
-    
-    this.chronologicalHistory.unshift(result);
-    
-    if (this.chronologicalHistory.length > this.MAX_HISTORY_SIZE) {
-      this.chronologicalHistory = this.chronologicalHistory.slice(0, this.MAX_HISTORY_SIZE);
+
+    if (idx !== -1) {
+      const existing = this.chronologicalHistory[idx];
+      const merged: NormalizedResult = {
+        ...existing,
+        ...result,
+        key: { ...existing.key, ...result.key },
+        floorplan: result.floorplan ?? existing.floorplan,
+        image_condition: result.image_condition ?? existing.image_condition,
+        data_captured: result.data_captured ?? existing.data_captured,
+        analysis_status: result.analysis_status,
+      };
+      this.chronologicalHistory[idx] = merged;
+    } else {
+      this.chronologicalHistory.unshift(result);
+      if (this.chronologicalHistory.length > this.MAX_HISTORY_SIZE) {
+        this.chronologicalHistory.pop();
+      }
     }
   }
 
-  async getResultBySuperId(super_id: string): Promise<NormalizedResult | undefined> {
+  async getResultBySuperId(super_id: string) {
     return this.bySuperIdMap.get(super_id);
   }
 
-  async getResultByPropertyUrl(property_url: string): Promise<NormalizedResult | undefined> {
+  async getResultByPropertyUrl(property_url: string) {
     return this.byPropertyUrlMap.get(property_url);
   }
 
-  async getAllResults(): Promise<NormalizedResult[]> {
-    return Array.from(this.bySuperIdMap.values());
+  async getAllResults() {
+    return Array.from(this.chronologicalHistory);
   }
 
-  async getAllResultsChrono(): Promise<NormalizedResult[]> {
-    return this.chronologicalHistory;
+  async getAllResultsChrono() {
+    return Array.from(this.chronologicalHistory);
   }
 }
 
@@ -74,18 +80,21 @@ export function addSSEClient(res: any, property_url: string): void {
 }
 
 export function removeSSEClient(res: any): void {
-  const index = sseClients.findIndex(client => client.res === res);
-  if (index !== -1) {
-    sseClients.splice(index, 1);
-  }
+  const index = sseClients.findIndex((client) => client.res === res);
+  if (index !== -1) sseClients.splice(index, 1);
 }
 
-export function notifySSEClients(property_url: string, super_id: string | null): void {
+export function notifySSEClients(
+  property_url: string,
+  super_id: string | null,
+): void {
   sseClients
-    .filter(client => client.property_url === property_url)
-    .forEach(client => {
+    .filter((client) => client.property_url === property_url)
+    .forEach((client) => {
       try {
-        client.res.write(`data: ${JSON.stringify({ ready: true, super_id })}\n\n`);
+        client.res.write(
+          `data: ${JSON.stringify({ ready: true, super_id })}\n\n`,
+        );
         client.res.end();
       } catch (error) {
         console.error("Error notifying SSE client:", error);
