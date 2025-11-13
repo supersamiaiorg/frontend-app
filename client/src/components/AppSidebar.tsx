@@ -144,10 +144,10 @@ export function AppSidebar() {
                   >
                     <SidebarMenuButton
                       onClick={() => handleSelectHistory(item.super_id)}
-                      isActive={isActive}
-                      className="items-start py-3"
+                      isActive={!!isActive}
+                      className="items-start py-3 h-auto !overflow-visible"
                     >
-                      <div className="flex items-start gap-3 w-full">
+                      <div className="flex items-start gap-3 w-full min-h-0">
                         {/* Thumbnail */}
                         <div className="h-10 w-14 rounded-md bg-muted overflow-hidden flex-shrink-0">
                           {item.thumbnail ? (
@@ -164,8 +164,8 @@ export function AppSidebar() {
                         </div>
 
                         {/* Text content */}
-                        <div className="flex flex-col flex-1 min-w-0 gap-1">
-                          <div className="flex-1 min-w-0">
+                        <div className="flex flex-col flex-1 min-w-0 gap-1.5">
+                          <div className="min-w-0 space-y-0.5">
                             <p className="text-xs font-medium truncate">
                               {item.address ??
                                 item.property_url ??
@@ -178,10 +178,10 @@ export function AppSidebar() {
                             )}
                           </div>
 
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center flex-wrap gap-1.5">
                             <Badge
                               variant="outline"
-                              className={`flex items-center gap-1 px-1.5 py-0 text-[10px] font-normal flex-shrink-0 ${status.className}`}
+                              className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-normal flex-shrink-0 ${status.className}`}
                             >
                               <Icon
                                 className={`h-3 w-3 ${status.spin ? "animate-spin" : ""}`}
