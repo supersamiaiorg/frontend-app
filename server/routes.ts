@@ -17,6 +17,7 @@ import { z } from "zod";
 import * as fs from "fs";
 import * as path from "path";
 import { randomUUID } from "crypto";
+import { getDummyProperty } from "./fixtures/dummyProperty";
 
 const N8N_WEBHOOK_URL =
   "https://supersami.app.n8n.cloud/webhook/d36312c5-f379-4b22-9f6c-e4d44f50af4c";
@@ -28,36 +29,36 @@ function getBaseUrl(): string {
   if (process.env.REPLIT_DEPLOYMENT === "1") {
     // REPLIT_DOMAINS contains comma-separated list of all domains
     const domains = process.env.REPLIT_DOMAINS;
-    
+
     if (domains) {
       console.log("[getBaseUrl] REPLIT_DOMAINS:", domains);
-      
+
       // Parse comma-separated domains
       const domainList = domains.split(",").map(d => d.trim()).filter(d => d.length > 0);
-      
+
       if (domainList.length > 0) {
         // Prefer non-workspace .replit.app domains first
-        const nonWorkspaceReplitDomain = domainList.find(d => 
+        const nonWorkspaceReplitDomain = domainList.find(d =>
           d.endsWith(".replit.app") && !d.startsWith("workspace.")
         );
-        
+
         // Fall back to any .replit.app domain
         const anyReplitDomain = domainList.find(d => d.endsWith(".replit.app"));
-        
+
         // If no .replit.app domain, use the first custom domain
         const selectedDomain = nonWorkspaceReplitDomain || anyReplitDomain || domainList[0];
-        
+
         const baseUrl = `https://${selectedDomain}`;
         console.log("[getBaseUrl] Using deployed domain:", baseUrl);
         return baseUrl;
       }
-      
+
       console.warn("[getBaseUrl] REPLIT_DOMAINS is empty");
     } else {
       console.warn("[getBaseUrl] REPLIT_DEPLOYMENT=1 but REPLIT_DOMAINS not available");
     }
   }
-  
+
   // Development environment: use PUBLIC_BASE_URL if set, otherwise localhost
   const devUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
   console.log("[getBaseUrl] Using development URL:", devUrl);
@@ -533,6 +534,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
   }
+
+  // Public data-view API endpoint - returns property data for public display
+  app.get("/api/data-view/:superId", async (req, res) => {
+    try {
+      const { superId } = req.params;
+      console.log(`[/api/data-view] Fetching data for super_id: ${superId}`);
+
+      // For now, return dummy data for any super_id
+      // TODO: Later integrate with actual database
+      const propertyData = getDummyProperty(superId);
+
+      res.json(propertyData);
+    } catch (error) {
+      console.error("[/api/data-view] Error:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
 
   //
   // CSV proxy (CORS-safe) – shared handler
